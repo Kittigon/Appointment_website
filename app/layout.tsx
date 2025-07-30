@@ -1,4 +1,4 @@
-import Navbar from "@/component/Navbar";
+import Navbar from "@/components/Navbar";
 import './globals.css';
 
 
@@ -8,8 +8,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="bg-[#E8D7F4] overflow-x-hidden">
+    <html lang="en"  data-theme="light">
+      <body className="bg-[#E8D7F4] overflow-x-hidden min-h-screen">
         <Navbar/>
         {children}
       </body>

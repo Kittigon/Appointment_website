@@ -1,32 +1,28 @@
 'use client';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // กำหนดเวลาในแต่ละวัน
 // สามารถปรับเปลี่ยนได้ตามต้องการ
 const time = ["10:00", "11:00", "13:00", "14:00"];
 
 // ฟังก์ชันสำหรับสร้างวันที่ถัดไป 7 วัน
-// คืนค่าเป็นอาร์เรย์ของวันที่ในรูปแบบ 'yyyy-mm-dd'
-const getNext7Days = (): string[] => {
+const getNext7Weekdays = (): string[] => {
     const days: string[] = [];
-    const formatter = new Intl.DateTimeFormat('th-TH', {
-        weekday: 'short',
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-    });
+    let date = new Date();
 
-    for (let i = 0; i < 7; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0]; // 'yyyy-mm-dd'
-        days.push(dateStr);
+    while (days.length < 7) {
+        const day = date.getDay();
+        if (day !== 0 && day !== 6) { // ไม่เอาอาทิตย์(0) และเสาร์(6)
+            const dateStr = date.toISOString().split('T')[0]; // 'yyyy-mm-dd'
+            days.push(dateStr);
+        }
+        date.setDate(date.getDate() + 1);
     }
 
     return days;
 };
 
-const date = getNext7Days();
+const date = getNext7Weekdays();
 
 // สร้างสถานะเริ่มต้นสำหรับวันที่และเวลา
 // โดยเริ่มต้นให้ทุกวันและเวลาว่าง (true)
@@ -49,6 +45,13 @@ const formatThaiDate = (dateStr: string): string => {
     });
 };
 
+type User = {
+    id: number;
+    email: string;
+    name: string
+    role: "USER" | "MENTALHEALTH" | "ADMIN";
+}
+
 
 const UserAppointment = () => {
     const [status, setStatus] = useState(initStatus);
@@ -58,7 +61,61 @@ const UserAppointment = () => {
     const [name, setName] = useState("");
     const [code, setCode] = useState("");
     const [phone, setPhone] = useState("");
-    const [contactNote, setContactNote] = useState('');
+    const [description, setdescription] = useState('');
+
+    const [data, setData] = useState<User | null>(null)
+
+    //โหลดข้อมูลการนัดหมาย
+    useEffect(() => {
+        FetchAppoinment();
+        FecthUser();
+    }, [])
+
+    const FetchAppoinment = async () => {
+        try {
+            const res = await fetch('/api/appointment');
+            const data = await res.json();
+            // console.log(data)
+
+            const newstatus: typeof initStatus = { ...initStatus };
+
+            data.showAppoinment.forEach((appoint: any) => {
+                if (newstatus[appoint.date]) {
+                    newstatus[appoint.date][appoint.time] = false;
+                }
+            });
+
+            setStatus(newstatus)
+
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                console.log("Load Appoinment Failed : ", error.message)
+            } else {
+                console.log("Unknow error in Load Appoinment  !", error)
+            }
+        }
+    }
+
+    const FecthUser = async () => {
+        try {
+            const res = await fetch('/api/token', {
+                method: 'GET',
+                credentials: "include",
+            });
+
+            const data = await res.json();
+            // console.log("Data:", data);
+
+            if (res.ok) {
+                setData(data.user);
+            }
+            // } else {
+            //     console.log("ไม่พบ token หรือ token ไม่ถูกต้อง:", data.message);
+            // }
+        } catch (error) {
+            console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
+        }
+    }
 
     // ฟังก์ชันสำหรับจัดการการเลือกวันและเวลา
     // ถ้าวันและเวลาเลือกได้ (ว่าง) จะอัปเดตสถาน 
@@ -66,6 +123,12 @@ const UserAppointment = () => {
     // และจะไม่อัปเดต selectedDate และ selectedTime   
     const handleSelect = (date: string, time: string) => {
         if (!status[date][time]) return;
+
+        const checkDay = new Date(date).getDay();
+        if (checkDay === 0 || checkDay === 6) {
+            alert("ไม่สามารถจองวันเสาร์-อาทิตย์ได้");
+            return;
+        }
 
         // เช็คเวลาปัจจุบัน + 2 ชั่วโมง
         const now = new Date();
@@ -88,27 +151,59 @@ const UserAppointment = () => {
     // จะตรวจสอบว่ามีการเลือกวันและเวลา และกรอกข้อมูลครบถ้วนหรือไม่
     // ถ้าครบจะอัปเดตสถานะเป็นไม่ว่าง (false)
     // และแสดงข้อความแจ้งเตือนการจองสำเร็จ
-    const handleSave = () => {
-        if (!selectedDate || !selectedTime) return alert("กรุณาเลือกวันและเวลาก่อน");
-        if (!name || !code || !phone) return alert("กรุณากรอกข้อมูลให้ครบ");
+    const handleSave = async () => {
+        try {
+            if (!selectedDate || !selectedTime) return alert("กรุณาเลือกวันและเวลาก่อน");
+            if (!name || !code || !phone) return alert("กรุณากรอกข้อมูลให้ครบ");
 
-        // ปรับสถานะเป็นไม่ว่าง
-        setStatus(prev => ({
-            ...prev,
-            [selectedDate]: {
-                ...prev[selectedDate],
-                [selectedTime]: false
+            const userId = data?.id ;
+
+            const payload = {
+                userId,
+                name,
+                code,
+                phone,
+                description,
+                date: selectedDate,
+                time: selectedTime
             }
-        }));
 
-        alert(`จองสำเร็จ: ${selectedDate} เวลา ${selectedTime}`);
+            const res = await fetch('/api/appointment', {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
 
-        // รีเซ็ตฟอร์ม
-        setSelectedDate("");
-        setSelectedTime("");
-        setName("");
-        setCode("");
-        setPhone("");
+            // ปรับสถานะเป็นไม่ว่าง
+            if (res.ok) {
+                setStatus(prev => ({
+                    ...prev,
+                    [selectedDate]: {
+                        ...prev[selectedDate],
+                        [selectedTime]: false
+                    }
+                }));
+            }
+
+            alert(`จองสำเร็จ: ${selectedDate} เวลา ${selectedTime}`);
+
+            // รีเซ็ตฟอร์ม
+            setSelectedDate("");
+            setSelectedTime("");
+            setName("");
+            setCode("");
+            setPhone("");
+            setdescription("");
+
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                console.log("Create Appoinment Failed : ", error.message)
+            } else {
+                console.log("Unknow error in Load Appoinment : ", error)
+            }
+        }
     };
 
 
@@ -199,8 +294,8 @@ const UserAppointment = () => {
                             />
                             <textarea
                                 placeholder="ช่องทางการติดต่อเพิ่มเติม"
-                                value={contactNote}
-                                onChange={e => setContactNote(e.target.value)}
+                                value={description}
+                                onChange={e => setdescription(e.target.value)}
                                 rows={3}
                                 className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 col-span-1 md:col-span-2"
                             />

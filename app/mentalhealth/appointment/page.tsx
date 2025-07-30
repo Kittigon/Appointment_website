@@ -1,5 +1,5 @@
 'use client';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const time = ["10:00", "11:00", "13:00", "14:00"];
 
@@ -16,19 +16,30 @@ const getNext7Days = (): string[] => {
 
 const date = getNext7Days();
 
-// initStatus: สร้างออบเจกต์วันที่และเวลาว่าง (null = ยังไม่มีชื่อ)
-const initStatus: Record<string, Record<string, string | null>> = {};
+type AppointmentInfo = null | {
+    name: string;
+    code: string;
+    phone: string;
+    description: string;
+};
+
+type User = {
+    id: number;
+    email: string;
+    name: string
+    role: "USER" | "MENTALHEALTH" | "ADMIN";
+}
+
+// สร้างตารางว่างเริ่มต้น
+const initStatus: Record<string, Record<string, AppointmentInfo>> = {};
 date.forEach(date => {
     initStatus[date] = {};
-    time.forEach(t => {
-        initStatus[date][t] = null;
+    time.forEach(time => {
+        initStatus[date][time] = null;
     });
 });
 
-initStatus["2025-07-19"]["10:00"] = "นางสาวสมศรี ใจดี";
-
-
-// แปลงวันที่เป็นแบบไทย เช่น "ศ. 19 เม.ย. 67"
+// แปลงวันที่เป็นภาษาไทย
 const formatThaiDate = (dateStr: string): string => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('th-TH', {
@@ -40,32 +51,100 @@ const formatThaiDate = (dateStr: string): string => {
 };
 
 const MentalhealthAppointment = () => {
-    const [status, setStatus] = useState(initStatus); // ข้อมูลตาราง
+    const [status, setStatus] = useState<Record<string, Record<string, AppointmentInfo>>>(initStatus);
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
     const [code, setCode] = useState('');
     const [phone, setPhone] = useState('');
-    const [name, setName] = useState("");
+    const [name, setName] = useState('');
+    const [description, setDescription] = useState<string>('');
     const [selectedBookedInfo, setSelectedBookedInfo] = useState<{
         name: string;
         code: string;
         phone: string;
         date: string;
         time: string;
+        description: string;
     } | null>(null);
 
-    // เมื่อคลิกเลือกเวลาที่ "ว่าง"
-    const handleSelect = (date: string, time: string) => {
-        if (status[date][time]) return; // ห้ามเลือกถ้ามีชื่อ
+    const [data, setData] = useState<User | null>(null)
 
-        // ตรวจสอบว่าเวลาที่เลือกมากกว่าเวลาปัจจุบัน +2 ชม.
+    useEffect(() => {
+        FecthUser();
+    }, []);
+
+    useEffect(() => {
+        if (data?.id) {
+            FetchAppointment();
+        }
+    }, [data]);
+
+    const FetchAppointment = async () => {
+        try {
+            const res = await fetch('/api/appointment');
+            const data = await res.json();
+            console.log(data.showAppoinment)
+
+            const newStatus: typeof initStatus = { ...initStatus };
+
+            data.showAppoinment.forEach((appoint: any) => {
+                if (newStatus[appoint.date]) {
+                    newStatus[appoint.date][appoint.time] = {
+                        name: appoint.name,
+                        code: appoint.code,
+                        phone: appoint.phone,
+                        description: appoint.description,
+                    };
+                }
+            });
+
+            setStatus(newStatus);
+        } catch (error) {
+            console.error("โหลดข้อมูลล้มเหลว:", error);
+        }
+    };
+
+    const FecthUser = async () => {
+        try {
+            const res = await fetch('/api/token', {
+                method: 'GET',
+                credentials: "include",
+            });
+
+            const data = await res.json();
+            // console.log("Data:", data);
+
+            if (res.ok) {
+                setData(data.user);
+            }
+            // } else {
+            //     console.log("ไม่พบ token หรือ token ไม่ถูกต้อง:", data.message);
+            // }
+        } catch (error) {
+            console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
+        }
+    }
+
+    const handleSelect = (date: string, time: string) => {
+        const booking = status[date][time];
+        if (booking) {
+            setSelectedBookedInfo({
+                name: booking.name,
+                code: booking.code,
+                phone: booking.phone,
+                description: booking.description,
+                date,
+                time,
+            });
+            return;
+        }
+
         const now = new Date();
         const [h, m] = time.split(":").map(Number);
         const selected = new Date(date);
         selected.setHours(h, m, 0, 0);
 
-        const twoHours = 2 * 60 * 60 * 1000;
-        if (selected.getTime() - now.getTime() < twoHours) {
+        if (selected.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
             alert("กรุณาเลือกเวลาล่วงหน้าอย่างน้อย 2 ชั่วโมง");
             return;
         }
@@ -74,26 +153,64 @@ const MentalhealthAppointment = () => {
         setSelectedTime(time);
     };
 
-    // บันทึกชื่อเข้า status
-    const handleSave = () => {
-        if (!selectedDate || !selectedTime) return alert("กรุณาเลือกวันและเวลา");
-        if (!name.trim()) return alert("กรุณากรอกชื่อ");
-        if (!code.trim() || !phone.trim()) return alert("กรุณากรอกรหัสและเบอร์โทรศัพท์");
+    const handleSave = async () => {
+        try {
+            if (!selectedDate || !selectedTime) return alert("กรุณาเลือกวันและเวลา");
+            if (!name.trim()) return alert("กรุณากรอกชื่อ");
+            if (!code.trim() || !phone.trim()) return alert("กรุณากรอกรหัสและเบอร์โทรศัพท์");
 
-        setStatus(prev => ({
-            ...prev,
-            [selectedDate]: {
-                ...prev[selectedDate],
-                [selectedTime]: name.trim()
+            const userId = data?.id;
+
+            const payload = {
+                userId,
+                name,
+                code,
+                phone,
+                description,
+                date: selectedDate,
+                time: selectedTime
             }
-        }));
 
-        alert(`จองสำเร็จ: ${formatThaiDate(selectedDate)} เวลา ${selectedTime} โดย ${name}`);
-        setSelectedDate("");
-        setSelectedTime("");
-        setName("");
-        setCode("");
-        setPhone("");
+            const res = await fetch(`/api/appointment`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+
+            if (res.ok) {
+                setStatus(prev => ({
+                    ...prev,
+                    [selectedDate]: {
+                        ...prev[selectedDate],
+                        [selectedTime]: {
+                            name,
+                            code,
+                            phone,
+                            description
+                        }
+                    }
+                }));
+            }
+
+            alert(`จองสำเร็จ: ${formatThaiDate(selectedDate)} เวลา ${selectedTime} โดย ${name}`);
+            setSelectedDate("");
+            setSelectedTime("");
+            setName("");
+            setCode("");
+            setPhone("");
+            setDescription("");
+
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                if (error instanceof Error) {
+                    console.log("Create Appoinment Failed : ", error.message)
+                } else {
+                    console.log("Unknow error in Load Appoinment : ", error)
+                }
+            }
+        }
     };
 
     return (
@@ -121,7 +238,7 @@ const MentalhealthAppointment = () => {
                                 <tr key={time}>
                                     <td className="p-3 font-semibold bg-white rounded-md shadow">{time}</td>
                                     {date.map(date => {
-                                        const name = status[date][time];
+                                        const booking = status[date][time];
                                         const isSelected = selectedDate === date && selectedTime === time;
 
                                         return (
@@ -129,19 +246,12 @@ const MentalhealthAppointment = () => {
                                                 key={date + time}
                                                 className={`
                                                     p-2 rounded-md text-sm font-medium whitespace-nowrap
-                                                    ${name ? 'bg-gray-200 text-gray-600' : 'bg-orange-100 text-orange-800 hover:bg-orange-200 cursor-pointer'}
+                                                    ${booking ? 'bg-gray-200 text-gray-600' : 'bg-orange-100 text-orange-800 hover:bg-orange-200 cursor-pointer'}
                                                     ${isSelected ? 'ring-2 ring-yellow-500' : ''}
                                                 `}
-                                                onClick={() => {
-                                                    if (name) {
-                                                        // ถ้ามีชื่อ → แสดงรายละเอียด
-                                                        setSelectedBookedInfo({ name, date, time, code , phone });
-                                                    } else {
-                                                        handleSelect(date, time); // ถ้ายังไม่มี → เลือกเพื่อจอง
-                                                    }
-                                                }}
+                                                onClick={() => handleSelect(date, time)}
                                             >
-                                                {name  ? "ไม่ว่าง" : "ว่าง"}
+                                                {booking ? "ไม่ว่าง" : "ว่าง"}
                                             </td>
                                         );
                                     })}
@@ -152,29 +262,36 @@ const MentalhealthAppointment = () => {
                 </div>
 
                 {/* ฟอร์มกรอกชื่อ */}
-                {selectedDate && selectedTime && !status[selectedDate][selectedTime] && (
-                    <div className="bg-white shadow-md rounded-lg p-4 md:p-6 mt-6 ">
+                {selectedDate && selectedTime && status[selectedDate][selectedTime] === null && (
+                    <div className="bg-white shadow-md rounded-lg p-4 md:p-6 mt-6">
                         <h2 className="text-xl font-semibold text-gray-800 mb-4">กรอกชื่อผู้รับการปรึกษา</h2>
                         <input
                             type="text"
                             placeholder="ชื่อ-นามสกุล"
                             value={name}
                             onChange={e => setName(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                            className="w-full p-3 border border-gray-300 rounded-md mb-4"
                         />
                         <input
                             type="text"
                             placeholder="รหัสประจำตัว"
                             value={code}
                             onChange={e => setCode(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                            className="w-full p-3 border border-gray-300 rounded-md mb-4"
                         />
                         <input
                             type="text"
                             placeholder="เบอร์โทรศัพท์"
                             value={phone}
                             onChange={e => setPhone(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                            className="w-full p-3 border border-gray-300 rounded-md mb-4"
+                        />
+                        <textarea
+                            placeholder="ช่องทางการติดต่อเพิ่มเติม"
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            rows={3}
+                            className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 col-span-1 md:col-span-2 w-full  mb-4"
                         />
                         <input
                             type="text"
@@ -189,12 +306,14 @@ const MentalhealthAppointment = () => {
                             >
                                 บันทึก
                             </button>
-
                             <button
                                 onClick={() => {
                                     setSelectedDate("");
                                     setSelectedTime("");
                                     setName("");
+                                    setCode("");
+                                    setPhone("");
+                                    setDescription("");
                                 }}
                                 className="w-full md:w-auto bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-6 rounded-full"
                             >
@@ -203,49 +322,47 @@ const MentalhealthAppointment = () => {
                         </div>
                     </div>
                 )}
+
+                {/* ข้อมูลผู้จอง */}
                 {selectedBookedInfo && (
-                    <div className="bg-white shadow-md rounded-lg p-6 mt-6  mx-auto border border-purple-200">
+                    <div className="bg-white shadow-md rounded-lg p-6 mt-6 border border-purple-200">
                         <h3 className="text-xl font-bold text-black mb-4 border-b pb-2">ข้อมูลผู้จอง</h3>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-800 text-[15px]">
-                            <div>
-                                <input
-                                    type="text"
-                                    value={`ชื่อ: ${selectedBookedInfo.name}`}
-                                    readOnly
-                                    className="w-full p-3 border font-semibold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
-                                />
-                            </div>
-                            <div>
-                                <input
-                                    type="text"
-                                    value={`รหัส: ${selectedBookedInfo.code}`}
-                                    readOnly
-                                    className="w-full p-3 border font-semibold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
-                                />
-                            </div>
-                            <div>
-                                <input
-                                    type="text"
-                                    value={`เบอร์โทรศัพท์: ${selectedBookedInfo.phone}`}
-                                    readOnly
-                                    className="w-full p-3 border font-semibold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
-                                />
-                            </div>
-                            <div>
-                                <input
-                                    type="text"
-                                    value={`วัน: ${formatThaiDate(selectedBookedInfo.date)} | เวลา: ${selectedBookedInfo.time}`}
-                                    readOnly
-                                    className="w-full p-3 border font-semibold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
-                                />
-                            </div>
+                            <input
+                                type="text"
+                                value={`ชื่อ: ${selectedBookedInfo.name}`}
+                                readOnly
+                                className="w-full p-3 border font-semibold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
+                            />
+                            <input
+                                type="text"
+                                value={`รหัส: ${selectedBookedInfo.code}`}
+                                readOnly
+                                className="w-full p-3 border font-semibold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
+                            />
+                            <input
+                                type="text"
+                                value={`เบอร์โทรศัพท์: ${selectedBookedInfo.phone}`}
+                                readOnly
+                                className="w-full p-3 border font-semibold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
+                            />
+                            <textarea
+                                value={`ช่องทางการติดต่อเพิ่มเติม : ${selectedBookedInfo.description}`}
+                                rows={3}
+                                readOnly
+                                className="p-3 border font-semibold border-gray-200 bg-gray-100 text-gray-600 rounded-md rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 col-span-1 md:col-span-2 w-full  mb-4"
+                            />
+                            <input
+                                type="text"
+                                value={`วัน: ${formatThaiDate(selectedBookedInfo.date)} | เวลา: ${selectedBookedInfo.time}`}
+                                readOnly
+                                className="w-full p-3 border font-semibold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
+                            />
                         </div>
-
                         <div className="flex justify-end mt-6">
                             <button
                                 onClick={() => setSelectedBookedInfo(null)}
-                                className="px-6 py-2 bg-gray-300 hover:bg-gray-400 rounded-full text-sm font-medium text-gray-800 transition duration-200"
+                                className="px-6 py-2 bg-gray-300 hover:bg-gray-400 rounded-full text-sm font-medium text-gray-800"
                             >
                                 ปิด
                             </button>

@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,9 +12,7 @@ model users {
   id           Int            @id @default(autoincrement())
   email        String         @unique
   password     String
-  code         String
   name         String
-  phone        Int
   age          Int?
   gender       String?
   role         Role           @default(USER)
@@ -24,23 +21,43 @@ model users {
   appointments appointments[]
 }
 
+model appointments {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  date        String
+  time        String
+  description String?
+  status      Status   @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+  code        String
+  phone       String
+  name        String
+  user        users    @relation(fields: [userId], references: [id])
+}
+
+model dass_21_result {
+  id               Int       @id @default(autoincrement())
+  user_id          String?
+  depression_score Int?
+  anxiety_score    Int?
+  stress_score     Int?
+  depression_level String?
+  anxiety_level    String?
+  stress_level     String?
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model documents {
+  id        Int                    @id @default(autoincrement())
+  content   String?
+  embedding Unsupported("vector")?
+}
+
 enum Role {
   USER
   ADMIN
   MENTALHEALTH
-}
-
-model appointments {
-  id        Int      @id @default(autoincrement())
-  user users @relation(fields: [userId], references: [id])
-  userId    Int
-  date      DateTime
-  time      String
-  description String?
-  status  Status   @default(PENDING)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
-
 }
 
 enum Status {
