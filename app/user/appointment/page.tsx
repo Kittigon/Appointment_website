@@ -329,14 +329,14 @@ const UserAppointment = () => {
                                 className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
                             />
                             <input
-                                type="text"
+                                type="number"
                                 placeholder="รหัส"
                                 value={code}
                                 onChange={e => setCode(e.target.value)}
                                 className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
                             />
                             <input
-                                type="text"
+                                type="number"
                                 placeholder="เบอร์โทรศัพท์"
                                 value={phone}
                                 onChange={e => setPhone(e.target.value)}

@@ -57,6 +57,8 @@ const MentalhealthEvaluations = () => {
             alert('เกิดข้อผิดพลาดในการลบข้อมูล');
         }
     }
+    
+    console.log(data)
 
     return (
         <>
@@ -71,6 +73,7 @@ const MentalhealthEvaluations = () => {
                         <thead>
                             <tr className=" text-gray-700 text-center">
                                 <th className="border-b-2 border-gray-300 p-2">ID</th>
+                                <th className="border-b-2 border-gray-300 p-2">ชื่อ</th>
                                 <th className="border-b-2 border-gray-300 p-2">คะแนน/ความเสี่ยงของ ภาวะซึมเศร้า</th>
                                 <th className="border-b-2 border-gray-300 p-2">คะแนน/ความเสี่ยงของ ภาวะวิตกกังวล</th>
                                 <th className="border-b-2 border-gray-300 p-2">คะแนน/ความเสี่ยงของ ภาวะเครียด</th>
@@ -82,6 +85,7 @@ const MentalhealthEvaluations = () => {
                             {data.map((item =>
                                 <tr key={item.id} className="text-gray-700  text-center">
                                     <td className="border-b border-gray-200 p-2">{item.id}</td>
+                                    <td className="border-b border-gray-200 p-2">{item.name}</td>
                                     <td className="border-b border-gray-200 p-2">{item.depression_score} / {item.depression_level}</td>
                                     <td className="border-b border-gray-200 p-2">{item.anxiety_score} / {item.anxiety_level}</td>
                                     <td className="border-b border-gray-200 p-2">{item.stress_score} / {item.stress_level}</td>

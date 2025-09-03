@@ -322,7 +322,7 @@ const MentalhealthAppointment = () => {
                         const todayStr = new Date().toISOString().split('T')[0];
                         const todayAppointments = status[todayStr] || {};
 
-                        const bookedTimes = Object.entries(todayAppointments).filter(([ info]) => info !== null);
+                        const bookedTimes = Object.entries(todayAppointments).filter(([_ , info]) => info !== null);
 
                         if (bookedTimes.length === 0) {
                             return <p className="text-gray-500">ยังไม่มีการนัดหมายวันนี้</p>;
@@ -359,14 +359,14 @@ const MentalhealthAppointment = () => {
                             className="w-full p-3 border border-gray-300 rounded-md mb-4"
                         />
                         <input
-                            type="text"
+                            type="number"
                             placeholder="รหัสประจำตัว"
                             value={code}
                             onChange={e => setCode(e.target.value)}
                             className="w-full p-3 border border-gray-300 rounded-md mb-4"
                         />
                         <input
-                            type="text"
+                            type="number"
                             placeholder="เบอร์โทรศัพท์"
                             value={phone}
                             onChange={e => setPhone(e.target.value)}

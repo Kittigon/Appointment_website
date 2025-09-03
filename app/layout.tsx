@@ -8,12 +8,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en"  data-theme="light">
-      <header>
-          <title>Appointment Website</title>
-      </header>
+    <html lang="en" data-theme="light">
       <body className="bg-[#E8D7F4] overflow-x-hidden min-h-screen">
-        <Navbar/>
+        <header>
+          <title>Appointment Website</title>
+        </header>
+        <Navbar />
         {children}
       </body>
     </html>
