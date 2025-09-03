@@ -204,6 +204,7 @@ const Navbar = () => {
                                     <div className="ml-4 mt-1 space-y-1 text-sm">
                                         <Link href="/profile" className="block hover:underline">โปรไฟล์</Link>
                                         <Link href="/changepassword" className="block hover:underline">เปลี่ยนรหัสผ่าน</Link>
+                                        <Link href="/reportproblem" className="block hover:underline">รายงานปัญหา</Link>
                                         <button onClick={() => { handleLogout() }} className="block hover:underline text-red-600">ออกจากระบบ</button>
                                     </div>
                                 )}
