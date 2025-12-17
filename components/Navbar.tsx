@@ -1,8 +1,8 @@
 'use client'
-import { useState, useEffect} from 'react'
+import { useState, useEffect } from 'react'
 import Link from "next/link"
 import Image from "next/image"
-import { LockKeyholeOpen, Menu } from 'lucide-react'
+import { LockKeyholeOpen, Menu, Bell } from 'lucide-react'
 
 type User = {
     id: number;
@@ -51,8 +51,8 @@ const Navbar = () => {
             });
 
             if (res.ok) {
-                setData(null); 
-                window.location.href = '/login'; 
+                setData(null);
+                window.location.href = '/login';
                 FecthUser();
             } else {
                 const errorData = await res.json();
@@ -75,9 +75,9 @@ const Navbar = () => {
             <div className="bg-[#E6E6E6] px-4 md:px-7 py-4">
                 <nav className="flex justify-between items-center">
                     {/* LOGO */}
-                    <button className="flex items-center gap-2">
+                    <button className="fflex items-center gap-2 bg-transparent border-none">
                         <Image
-                            className="rounded-full"
+                            className="rounded-full object-cover"
                             src="/ตรามหาลัยพะเยา.png"
                             height={40}
                             width={40}
@@ -101,13 +101,17 @@ const Navbar = () => {
                                 <li><Link href="/user/appointment" className="hover:underline">ตารางนัดหมาย</Link></li>
                                 <li><Link href="/user/infocheck" className="hover:underline">ตรวจสอบการนัดหมาย</Link></li>
                                 <li><Link href="/user/history" className="hover:underline">ประวัติการนัดหมาย</Link></li>
+                                <li><Link href="/user/notifications" className="hover:underline"><Bell /></Link></li>
                             </>
                         )}
                         {data?.role === "MENTALHEALTH" && (
                             <>
                                 <li><Link href="/mentalhealth/appointment" className="hover:underline">ปฏิทินการนัดพบ</Link></li>
+                                <li><Link href="/mentalhealth/appointment-check" className="hover:underline">การนัดหมายจากผู้ใช้บริการ</Link></li>
                                 <li><Link href="/mentalhealth/evaluations" className="hover:underline">ตรวจสอบแบบประเมิน</Link></li>
-                                <li><Link href="/mentalhealth/history" className="hover:underline">ประวัติบุคลากร</Link></li>
+                                <li><Link href="/mentalhealth/close-day" className="hover:underline">ตั้งค่าวันปิดให้บริการ</Link></li>
+                                <li><Link href="/mentalhealth/history" className="hover:underline">ประวัติผู้ใช้บริการ</Link></li>
+                                <li><Link href="/mentalhealth/notifications" className="hover:underline"><Bell /></Link></li>
                             </>
                         )}
                         {/* {data?.role === "ADMIN" && (
@@ -175,8 +179,10 @@ const Navbar = () => {
                         {data?.role === "MENTALHEALTH" && (
                             <>
                                 <Link href="/mentalhealth/appointment" className="block hover:underline">ปฏิทินการนัดพบ</Link>
+                                <Link href="/mentalhealth/appointment-check" className="block hover:underline">การนัดหมายจากผู้ใช้บริการ</Link>
                                 <Link href="/mentalhealth/evaluations" className="block hover:underline">ตรวจสอบแบบประเมิน</Link>
-                                <Link href="/mentalhealth/history" className="block hover:underline">ประวัติบุคลากร</Link>
+                                <Link href="/mentalhealth/evaluations" className="block hover:underline">ตั้งค่าวันปิดให้บริการ</Link>
+                                <Link href="/mentalhealth/history" className="block hover:underline">ประวัติผู้ใช้บริการ</Link>
                             </>
                         )}
                         {data?.role === "ADMIN" && (

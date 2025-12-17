@@ -70,6 +70,9 @@ type User = {
     role: "USER" | "MENTALHEALTH" | "ADMIN";
 }
 
+type DisabledDate = {
+    date: string;
+};
 
 const UserAppointment = () => {
     const [status, setStatus] = useState<Record<string, Record<string, boolean>>>({});
@@ -85,6 +88,8 @@ const UserAppointment = () => {
 
     const [offset, setOffset] = useState(0);
     const [dateList, setDateList] = useState(getNextWeekdays(0));
+
+    const [disabledDates, setDisabledDates] = useState<string[]>([]);
 
     // const initStatus: Record<string, Record<string, boolean>> = {}
     // dateList.forEach(date => {
@@ -125,6 +130,15 @@ const UserAppointment = () => {
             console.error("โหลดนัดหมายล้มเหลว:", error);
         }
     }, []);
+
+    const fetchDisabledDates = async () => {
+        const res = await fetch('/api/disabled-date');
+        const data = await res.json();
+
+        const arr = data.disabled.map((d: DisabledDate) => d.date);
+        setDisabledDates(arr);
+    };
+
     //โหลดข้อมูลการนัดหมาย
     useEffect(() => {
         const newDates = getNextWeekdays(offset)
@@ -133,12 +147,21 @@ const UserAppointment = () => {
         FecthUser()
     }, [offset, FetchAppointment, FecthUser])
 
+    useEffect(() => {
+        fetchDisabledDates();
+    }, []);
+
     // ฟังก์ชันสำหรับจัดการการเลือกวันและเวลา
     // ถ้าวันและเวลาเลือกได้ (ว่าง) จะอัปเดตสถาน 
     // ถ้าไม่ว่างจะไม่ทำอะไร
     // และจะไม่อัปเดต selectedDate และ selectedTime   
     const handleSelect = (date: string, time: string) => {
         if (!status[date][time]) return;
+
+        if (disabledDates.includes(date)) {
+            alert("วันนี้ถูกปิดไม่สามารถจองได้");
+            return;
+        }
 
         const checkDay = new Date(date).getDay();
         if (checkDay === 0 || checkDay === 6) {
@@ -251,7 +274,15 @@ const UserAppointment = () => {
                             <tr>
                                 <th className="p-3 bg-purple-100 rounded-md whitespace-nowrap">เวลา</th>
                                 {dateList.map(date => (
-                                    <th key={date} className="p-3 bg-purple-100 rounded-md whitespace-nowrap">
+                                    <th
+                                        key={date}
+                                        className={`
+                                            p-3 rounded-md whitespace-nowrap
+                                            ${disabledDates.includes(date)
+                                                ? 'bg-red-200 text-red-700'
+                                                : 'bg-purple-100'}
+                                        `}
+                                    >
                                         {formatThaiDate(date)}
                                     </th>
                                 ))}
@@ -262,8 +293,20 @@ const UserAppointment = () => {
                                 <tr key={time}>
                                     <td className="p-3 font-semibold bg-white rounded-md shadow whitespace-nowrap">{time}</td>
                                     {dateList.map(date => {
+                                        if (disabledDates.includes(date)) {
+                                            return (
+                                                <td
+                                                    key={date + time}
+                                                    className="bg-red-100 text-red-500 p-2 rounded-md"
+                                                >
+                                                    ปิด
+                                                </td>
+                                            );
+                                        }
+
                                         const available = status[date]?.[time] ?? false;
                                         const isSelected = selectedDate === date && selectedTime === time;
+
                                         return (
                                             <td
                                                 key={date + time}
@@ -343,7 +386,7 @@ const UserAppointment = () => {
                                 className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
                             />
                             <textarea
-                                placeholder="ช่องทางการติดต่อเพิ่มเติม"
+                                placeholder="หมายเหตุ (ถ้ามี)"
                                 value={description}
                                 onChange={e => setdescription(e.target.value)}
                                 rows={3}

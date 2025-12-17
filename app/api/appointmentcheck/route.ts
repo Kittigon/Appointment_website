@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/utils/db";
 
-//หาข้อมูลการนัดหมายของผู้ใช้งาน
+//หาข้อมูลการนัดหมายของตนเอง
 export async function GET(req: NextRequest) {
     try {
         const userId = Number(req.nextUrl.searchParams.get("userId"))

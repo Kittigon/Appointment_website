@@ -13,7 +13,7 @@ export async function GET() {
             include: {
                 user: {
                     select: {
-                        name: true,   
+                        name: true,
                     },
                 },
             },
@@ -36,11 +36,21 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { userId, type, description } = body as reportproblems;
     try {
-        await prisma.reportproblems.create({
+        const reportproblems = await prisma.reportproblems.create({
             data: {
                 userId,
                 type,
                 description
+            }
+        })
+
+        await prisma.notifications.create({
+            data: {
+                userId,
+                type: "REPORT_NEW",
+                title: "รับรายงานปัญหาแล้ว",
+                message: `เราได้รับรายงานปัญหาของคุณแล้ว ทีมงานกำลังตรวจสอบ`,
+                reportId: reportproblems.id
             }
         })
 

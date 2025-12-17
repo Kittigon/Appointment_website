@@ -38,7 +38,7 @@ const AdminAppointment = () => {
                 <p className="text-slate-500">ยังไม่มีการนัดหมาย</p>
             ) : (
                 <>
-                    {/* ✅ Card Layout ทุกหน้าจอ */}
+                    {/*  Card Layout ทุกหน้าจอ */}
                     <div className="grid gap-4">
                         {currentData.map((appt) => (
                             <div key={appt.id} 
@@ -74,7 +74,7 @@ const AdminAppointment = () => {
                         ))}
                     </div>
 
-                    {/* ✅ Pagination */}
+                    {/* Pagination */}
                     <div className="flex justify-center items-center gap-2 mt-6">
                         <button
                             disabled={currentPage === 1}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/utils/db"
 import { Status } from "@prisma/client"
 
+
 export async function GET(req: NextRequest) {
     try {
         const userIdParam = req.nextUrl.searchParams.get("userId")

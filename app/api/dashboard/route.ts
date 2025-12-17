@@ -24,6 +24,15 @@ export async function GET() {
         const recentAssessmentAlertsRaw = await prisma.dass_21_result.findMany({
             orderBy: { created_at: "desc" },
             take: 5,
+            include: {
+                user_consent: {
+                    select: {
+                        name: true,
+                        phone: true,
+                        student_id: true
+                    }
+                }
+            }
         });
 
         const recentReportAlerts = recentReportAlertsRaw.map(r => ({
@@ -34,7 +43,8 @@ export async function GET() {
 
         const recentAssessmentAlerts = recentAssessmentAlertsRaw.map(r => ({
             id: r.id,
-            message: `${r.name} ทำแบบประเมิน - สภาวะซึมเศร้า: ${r.depression_level}, สภาวะวิตกกังวล: ${r.anxiety_level}, สภาวะเครียด: ${r.stress_level}`,
+            message: `${r.user_consent?.name} (${r.user_consent?.student_id}) ทำแบบประเมิน 
+            - ซึมเศร้า: ${r.depression_level}, วิตกกังวล: ${r.anxiety_level}, เครียด: ${r.stress_level}`,
             createdAt: r.created_at
         }));
 

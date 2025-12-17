@@ -94,9 +94,9 @@ export default function AdminDashboardSimple() {
                         {recentAlerts.length === 0 ? (
                             <p className="text-slate-500">ยังไม่มีการแจ้งเตือน</p>
                         ) : (
-                            recentAlerts.map(alert => (
+                            recentAlerts.map((alert , index)=> (
                                 <li
-                                    key={alert.id}
+                                    key={index}
                                     className="p-3 bg-slate-50 rounded-lg border hover:bg-slate-100 transition flex justify-between"
                                 >
                                     <span>{alert.message}</span>

@@ -1,24 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-wrapper-object-types, @typescript-eslint/no-unused-vars */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/utils/db";
 import type { reportproblems } from "@prisma/client";
 
 // =========================
-// RouteContext Type
-// =========================
-type SegmentParams<T extends Object = any> = T extends Record<string, any>
-    ? { [K in keyof T]: T[K] extends string ? string | string[] | undefined : never }
-    : T
-
-type RouteContext = { params: SegmentParams }
-
-// =========================
 // PUT - แก้ไขฟอร์มปัญหาจากผู้ใช้งาน
 // =========================
-export async function PUT(req: NextRequest, context: RouteContext) {
+export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        const id = Number(context.params.id)
-        if (isNaN(id)) {
+        const id = await context.params;
+        const idNum = Number(id.id)
+        if (isNaN(idNum)) {
             return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
         }
 
@@ -26,7 +17,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         const { type, description } = body
 
         await prisma.reportproblems.update({
-            where: { id },
+            where: { id: idNum },
             data: { type, description },
         })
 
@@ -50,49 +41,105 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 // =========================
 // PATCH - อัพเดต status
 // =========================
-export async function PATCH(req: NextRequest, context: RouteContext) {
+export async function PATCH(
+    req: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
     try {
-        const id = Number(context.params.id)
-        if (isNaN(id)) {
-            return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
+        const id = await context.params;
+        const idNum = Number(id.id);
+        if (isNaN(idNum)) {
+            return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
         }
 
-        const { status } = await req.json()
+        const body = await req.json();
+        const { status } = body;
 
-        await prisma.reportproblems.update({
-            where: { id },
-            data: { status },
-        })
-
-        return NextResponse.json(
-            { message: "Report a Problem status updated successfully" },
-            { status: 200 }
-        )
-    } catch (error: unknown) {
-        if (error instanceof Error) {
-            console.error("PATCH Report a Problem Error:", error.message)
-        } else {
-            console.error("Unknown PATCH Report a Problem Error:", error)
+        // ตรวจสอบค่าสถานะที่ถูกต้องตาม ENUM
+        const allowed = ["NEW", "IN_PROGRESS", "RESOLVED", "CANCELLED"];
+        if (!allowed.includes(status)) {
+            return NextResponse.json({ error: "Invalid status" }, { status: 400 });
         }
-        return NextResponse.json(
-            { message: "Server PATCH Report a Problem Error!" },
-            { status: 500 }
-        )
+
+        // อัปเดตรายงานปัญหา
+        const updated = await prisma.reportproblems.update({
+            where: { id: idNum },
+            data: {
+                status
+            }
+        });
+
+        // notification
+        if (status === "NEW") {
+            await prisma.notifications.create({
+                data: {
+                    userId: updated.userId,
+                    type: "REPORT_NEW",
+                    title: "รับรายงานปัญหาแล้ว",
+                    message: `เราได้รับรายงานปัญหาของคุณแล้ว ทีมงานจะดำเนินการตรวจสอบเร็วที่สุด`,
+                    reportId: updated.id
+                }
+            });
+        }
+
+        if (status === "IN_PROGRESS") {
+            await prisma.notifications.create({
+                data: {
+                    userId: updated.userId,
+                    type: "REPORT_IN_PROGRESS",
+                    title: "กำลังตรวจสอบรายงานปัญหา",
+                    message: `ทีมงานกำลังดำเนินการตรวจสอบปัญหาที่คุณแจ้งเข้ามา`,
+                    reportId: updated.id
+                }
+            });
+        }
+
+        if (status === "RESOLVED") {
+            await prisma.notifications.create({
+                data: {
+                    userId: updated.userId,
+                    type: "REPORT_RESOLVED",
+                    title: "ปัญหาได้รับการแก้ไขแล้ว",
+                    message: `ปัญหาที่คุณแจ้งเข้ามาได้รับการแก้ไขเรียบร้อยแล้ว`,
+                    reportId: updated.id
+                }
+            });
+        }
+
+        // if (status === "CANCELLED") {
+        //     await prisma.notifications.create({
+        //         data: {
+        //             userId: updated.userId,
+        //             type: "REPORT_CANCELLED",
+        //             title: "รายงานถูกยกเลิก",
+        //             message: `รายงานปัญหาถูกยกเลิก เนื่องจาก: ${reason || "ไม่ระบุเหตุผล"}`,
+        //             reportId: updated.id
+        //         }
+        //     });
+        // }
+
+        return NextResponse.json({ message: "Updated successfully", updated });
+
+    } catch (error) {
+        console.error("PATCH report problem error:", error);
+        return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 }
+
 
 // =========================
 // DELETE - ลบฟอร์มปัญหาจากผู้ใช้งาน
 // =========================
-export async function DELETE(req: NextRequest, context: RouteContext) {
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        const id = Number(context.params.id)
-        if (isNaN(id)) {
+        const id = await context.params;
+        const idNum = Number(id.id)
+        if (isNaN(idNum)) {
             return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
         }
 
         await prisma.reportproblems.delete({
-            where: { id },
+            where: { id: idNum },
         })
 
         return NextResponse.json(

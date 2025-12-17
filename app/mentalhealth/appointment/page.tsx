@@ -1,36 +1,26 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-wrapper-object-types, @typescript-eslint/no-unused-vars */
 'use client';
-import { useState, useEffect } from "react";
-import { Clock } from 'lucide-react'
-const time = ["10:00", "11:00", "13:00", "14:00"];
+import { useState, useEffect, useCallback } from "react";
+// import { Clock } from 'lucide-react'
 
+const time = ["10:00", "11:00", "13:00", "14:00"];
+// ลบ Logic ที่ข้ามเสาร์อาทิตย์ออก เพื่อให้ Grid เรียงตัวสวยงามครบ 7 ช่อง
 const getDaysInMonth = (offset: number): string[] => {
     const now = new Date();
     const target = new Date(now.getFullYear(), now.getMonth() + offset, 1);
     const year = target.getFullYear();
     const month = target.getMonth();
-
     const totalDays = new Date(year, month + 1, 0).getDate();
     const days: string[] = [];
 
     for (let i = 1; i <= totalDays; i++) {
         const day = new Date(year, month, i);
+        // --- ลบส่วนที่ continue เสาร์อาทิตย์ออก ---
 
-        // ---- START: เพิ่มส่วนนี้เข้ามา ----
-        const dayOfWeek = day.getDay(); // 0 = Sunday, 6 = Saturday
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
-            continue; // ข้ามไปวันถัดไปถ้าเป็นเสาร์หรืออาทิตย์
-        }
-        // ---- END: เพิ่มส่วนนี้เข้ามา ----
-
-        // FIX: จัดการรูปแบบวันที่เพื่อหลีกเลี่ยงปัญหา Timezone
         const yyyy = day.getFullYear();
         const mm = String(day.getMonth() + 1).padStart(2, '0');
         const dd = String(day.getDate()).padStart(2, '0');
-
         days.push(`${yyyy}-${mm}-${dd}`);
     }
-
     return days;
 };
 
@@ -57,6 +47,10 @@ type User = {
     email: string;
     name: string;
     role: "USER" | "MENTALHEALTH" | "ADMIN";
+};
+
+type DisabledDate = {
+    date: string;
 };
 
 const formatThaiDate = (dateStr: string): string => {
@@ -96,11 +90,16 @@ const MentalhealthAppointment = () => {
         description: string;
     } | null>(null);
     const [data, setData] = useState<User | null>(null);
+    // วันปิด
+    const [disabledDates, setDisabledDates] = useState<string[]>([]);
 
+
+    // ดึงข้อมูลผู้ใช้
     useEffect(() => {
         FecthUser();
     }, []);
 
+    // อัพเดทวันที่เมื่อเปลี่ยนเดือน
     useEffect(() => {
         const newDate = getDaysInMonth(monthOffset);
         setDate(newDate);
@@ -116,13 +115,7 @@ const MentalhealthAppointment = () => {
         setStatus(prev => ({ ...newStatus, ...prev }));
     }, [monthOffset]);
 
-    useEffect(() => {
-        if (data?.id) {
-            FetchAppointment();
-        }
-    }, [data, date]);
-
-    const FetchAppointment = async () => {
+    const FetchAppointment = useCallback(async () => {
         try {
             const res = await fetch('/api/appointment');
             const data = await res.json();
@@ -144,7 +137,20 @@ const MentalhealthAppointment = () => {
         } catch (error) {
             console.error("โหลดข้อมูลล้มเหลว:", error);
         }
-    };
+    }, [status]);
+
+    // ดึงข้อมูลการนัดหมาย
+    useEffect(() => {
+        if (data?.id) {
+            FetchAppointment();
+        }
+    }, [data, date, FetchAppointment]);
+
+    // ดึงวันปิด
+    useEffect(() => {
+        fetchDisabledDates();
+    }, []);
+
 
     const FecthUser = async () => {
         try {
@@ -162,7 +168,21 @@ const MentalhealthAppointment = () => {
         }
     };
 
+    const fetchDisabledDates = async () => {
+        const res = await fetch('/api/disabled-date');
+        const data = await res.json();
+
+        const arr = data.disabled.map((d: DisabledDate) => d.date);
+        setDisabledDates(arr);
+    };
+
+    // จัดการการเลือกวันและเวลา
     const handleSelect = (date: string, time: string) => {
+        if (disabledDates.includes(date)) {
+            alert("วันนี้ถูกปิดไม่สามารถจองได้");
+            return;
+        }
+
         const booking = status[date]?.[time];
 
         if (booking) {
@@ -274,55 +294,106 @@ const MentalhealthAppointment = () => {
                     </button>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="min-w-[700px] w-full text-center mb-6 border-separate border-spacing-2">
-                        <thead>
-                            <tr>
-                                <th className="p-3 bg-purple-100 rounded-md">เวลา</th>
-                                {date.map(date => (
-                                    <th key={date} className="p-3 bg-purple-100 rounded-md whitespace-nowrap">
-                                        {formatThaiDate(date)}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {time.map(time => (
-                                <tr key={time}>
-                                    <td className="p-3 font-semibold bg-white rounded-md shadow">{time}</td>
-                                    {date.map(date => {
-                                        const booking = status[date]?.[time];
-                                        const isSelected = selectedDate === date && selectedTime === time;
+                {/* --- ส่วนปฏิทินแบบ Grid (แทนที่ Table เดิม) --- */}
+                <div className="w-full max-w-[1000px] mx-auto bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
 
-                                        return (
-                                            <td
-                                                key={date + time}
-                                                className={`
-                                                    p-2 rounded-md text-sm font-medium whitespace-nowrap
-                                                    ${booking ? 'bg-gray-200 text-gray-600' : 'bg-orange-100 text-orange-800 hover:bg-orange-200 cursor-pointer'}
-                                                    ${isSelected ? 'ring-2 ring-yellow-500' : ''}
-                                                `}
-                                                onClick={() => handleSelect(date, time)}
-                                            >
-                                                {booking ? "ไม่ว่าง" : "ว่าง"}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    {/* Header วันในสัปดาห์ (อาทิตย์ - เสาร์) */}
+                    <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+                        {['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'].map((day) => (
+                            <div key={day} className="py-2 text-center text-sm font-semibold text-gray-500">
+                                {day}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Body ปฏิทิน */}
+                    <div className="grid grid-cols-7 auto-rows-fr bg-gray-200 gap-px border-b border-gray-200">
+                        {/* Logic สร้างช่องว่าง (Empty Slots) สำหรับวันที่ 1 ที่ไม่ตรงกับวันอาทิตย์ */}
+                        {(() => {
+                            if (date.length === 0) return null;
+                            const firstDate = new Date(date[0]);
+                            const startDay = firstDate.getDay(); // 0 = Sunday, 1 = Monday, ...
+
+                            // สร้าง array ช่องว่าง
+                            return Array.from({ length: startDay }).map((_, index) => (
+                                <div key={`empty-${index}`} className="bg-gray-50 min-h-[120px]" />
+                            ));
+                        })()}
+
+                        {/* Loop วันที่ */}
+                        {date.map((dateStr) => {
+                            const currentDate = new Date(dateStr);
+                            const dayNum = currentDate.getDate();
+                            const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
+                            const isDisabled = disabledDates.includes(dateStr); // วันปิดทำการพิเศษ
+
+                            return (
+                                <div
+                                    key={dateStr}
+                                    className={`
+                        bg-white min-h-[120px] p-2 flex flex-col gap-1 relative group hover:bg-gray-50 transition-colors
+                        ${(isWeekend || isDisabled) ? 'bg-gray-50' : ''}
+                    `}
+                                >
+                                    {/* เลขวันที่ */}
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className={`
+                            text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full
+                            ${dateStr === new Date().toISOString().split('T')[0]
+                                                ? 'bg-purple-600 text-white'
+                                                : 'text-gray-700'}
+                        `}>
+                                            {dayNum}
+                                        </span>
+                                        {(isWeekend || isDisabled) && (
+                                            <span className="text-[10px] text-red-400 font-light">
+                                                {isDisabled ? 'ปิด' : 'วันหยุด'}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* รายการเวลา (Slots) */}
+                                    <div className="flex flex-col gap-1 overflow-y-auto max-h-[100px] scrollbar-hide">
+                                        {(!isWeekend && !isDisabled) && time.map((t) => {
+                                            const booking = status[dateStr]?.[t];
+                                            const isBooked = !!booking;
+                                            const isSelected = selectedDate === dateStr && selectedTime === t;
+
+                                            return (
+                                                <button
+                                                    key={`${dateStr}-${t}`}
+                                                    onClick={() => handleSelect(dateStr, t)}
+                                                    className={`
+        text-[10px] px-2 py-1 rounded text-left truncate w-full transition-all
+        ${isBooked
+                                                            ? 'bg-gray-300 text-gray-600 line-through cursor-pointer hover:bg-gray-200'
+                                                            : isSelected
+                                                                ? 'bg-purple-600 text-white shadow-md'
+                                                                : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-100'}
+    `}
+                                                >
+                                                    {isBooked ? `จองแล้ว` : `${t}`}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {/* (Optional) สร้างช่องว่างปิดท้ายเดือนให้ครบแถว ถ้าต้องการ */}
+                    </div>
                 </div>
 
                 {/* แสดงรายการนัดหมายของวันนี้ */}
-                <div className="mt-6">
+                {/* <div className="mt-6">
                     <h2 className="text-lg font-semibold text-gray-700 mb-2">การนัดหมายของวันนี้</h2>
 
                     {(() => {
                         const todayStr = new Date().toISOString().split('T')[0];
                         const todayAppointments = status[todayStr] || {};
 
-                        const bookedTimes = Object.entries(todayAppointments).filter(([_ , info]) => info !== null);
+                        const bookedTimes = Object.entries(todayAppointments).filter(([ info ]) => info !== null);
 
                         if (bookedTimes.length === 0) {
                             return <p className="text-gray-500">ยังไม่มีการนัดหมายวันนี้</p>;
@@ -338,54 +409,84 @@ const MentalhealthAppointment = () => {
                             </ul>
                         );
                     })()}
-                </div>
+                </div> */}
 
 
                 {/* ฟอร์มจอง */}
                 {selectedDate && selectedTime && status[selectedDate]?.[selectedTime] === null && (
-                    <div className="bg-white shadow-md rounded-lg p-4 md:p-6 mt-6">
-                        <h2 className="text-xl font-semibold text-gray-800 mb-4">กรอกชื่อผู้รับการปรึกษา</h2>
-                        <input
-                            type="text"
-                            value={`${formatThaiDate(selectedDate)} | เวลา : ${selectedTime}`}
-                            readOnly
-                            className="w-full p-3 border font-bold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
-                        />
-                        <input
-                            type="text"
-                            placeholder="ชื่อ-นามสกุล"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-md mb-4"
-                        />
-                        <input
-                            type="number"
-                            placeholder="รหัสประจำตัว"
-                            value={code}
-                            onChange={e => setCode(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-md mb-4"
-                        />
-                        <input
-                            type="number"
-                            placeholder="เบอร์โทรศัพท์"
-                            value={phone}
-                            onChange={e => setPhone(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-md mb-4"
-                        />
-                        <textarea
-                            placeholder="ช่องทางการติดต่อเพิ่มเติม"
-                            value={description}
-                            onChange={e => setDescription(e.target.value)}
-                            rows={3}
-                            className="p-3 border border-gray-300 rounded-md w-full mb-4"
-                        />
-                        <div className="flex flex-col md:flex-row justify-end gap-4">
-                            <button
-                                onClick={handleSave}
-                                className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-6 rounded-full"
-                            >
-                                บันทึก
-                            </button>
+                    <dialog className="modal modal-open">
+                        <div className="modal-box max-w-xl">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                                กรอกชื่อผู้รับการปรึกษา
+                            </h2>
+
+                            <input
+                                type="text"
+                                value={`${formatThaiDate(selectedDate)} | เวลา : ${selectedTime}`}
+                                readOnly
+                                className="w-full p-3 border font-bold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
+                            />
+
+                            <input
+                                type="text"
+                                placeholder="ชื่อ-นามสกุล"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-md mb-4"
+                            />
+
+                            <input
+                                type="number"
+                                placeholder="รหัสประจำตัว"
+                                value={code}
+                                onChange={e => setCode(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-md mb-4"
+                            />
+
+                            <input
+                                type="number"
+                                placeholder="เบอร์โทรศัพท์"
+                                value={phone}
+                                onChange={e => setPhone(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-md mb-4"
+                            />
+
+                            <textarea
+                                placeholder="หมายเหตุ (ถ้ามี)"
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                                rows={3}
+                                className="p-3 border border-gray-300 rounded-md w-full mb-4"
+                            />
+
+                            {/* ปุ่มกด */}
+                            <div className="modal-action flex flex-col md:flex-row justify-end gap-4 w-full">
+
+                                <button
+                                    onClick={handleSave}
+                                    className="w-full md:w-auto btn bg-green-500 hover:bg-green-600 text-white border-none"
+                                >
+                                    บันทึก
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        setSelectedDate("");
+                                        setSelectedTime("");
+                                        setName("");
+                                        setCode("");
+                                        setPhone("");
+                                        setDescription("");
+                                    }}
+                                    className="w-full md:w-auto btn bg-gray-300 hover:bg-gray-400 text-gray-800 border-none"
+                                >
+                                    ยกเลิก
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* ปิด modal เมื่อคลิกนอกกรอบ */}
+                        <form method="dialog" className="modal-backdrop">
                             <button
                                 onClick={() => {
                                     setSelectedDate("");
@@ -395,60 +496,92 @@ const MentalhealthAppointment = () => {
                                     setPhone("");
                                     setDescription("");
                                 }}
-                                className="w-full md:w-auto bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-6 rounded-full"
                             >
-                                ยกเลิก
+                                close
                             </button>
-                        </div>
-                    </div>
+                        </form>
+                    </dialog>
                 )}
+
 
                 {/* ข้อมูลผู้จอง */}
                 {selectedBookedInfo && (
-                    <div className="bg-white shadow-md rounded-lg p-6 mt-6 border border-purple-200">
-                        <h3 className="text-xl font-bold text-black mb-4 border-b pb-2">ข้อมูลผู้จอง</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-800 text-[15px]">
-                            <input
-                                type="text"
-                                value={`${formatThaiDate(selectedBookedInfo.date)} | เวลา: ${selectedBookedInfo.time}`}
-                                readOnly
-                                className="w-full p-3 border font-bold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-2"
-                            />
-                            <input
-                                type="text"
-                                value={`ชื่อ: ${selectedBookedInfo.name}`}
-                                readOnly
-                                className="w-full p-3 border border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
-                            />
-                            <input
-                                type="text"
-                                value={`รหัส: ${selectedBookedInfo.code}`}
-                                readOnly
-                                className="w-full p-3 border border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
-                            />
-                            <input
-                                type="text"
-                                value={`เบอร์โทรศัพท์: ${selectedBookedInfo.phone}`}
-                                readOnly
-                                className="w-full p-3 border border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
-                            />
-                            <textarea
-                                value={`ช่องทางการติดต่อเพิ่มเติม : ${selectedBookedInfo.description}`}
-                                rows={3}
-                                readOnly
-                                className="p-3 border border-gray-200 bg-gray-100 text-gray-600 rounded-md col-span-1 md:col-span-2 w-full mb-4"
-                            />
+                    <dialog className="modal modal-open">
+                        <div className="modal-box max-w-xl p-0 overflow-hidden rounded-2xl shadow-xl">
+
+                            {/* Header */}
+                            <div className="bg-gradient-to-r from-purple-600 to-purple-500 px-6 py-4">
+                                <h3 className="text-xl font-semibold text-white">ข้อมูลผู้จอง</h3>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-6 space-y-4 text-gray-700">
+
+                                {/* วันที่และเวลา */}
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium text-gray-600">วันที่ & เวลา</label>
+                                    <div className="flex items-center gap-2 p-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                        <span className="material-symbols-outlined text-purple-600"></span>
+                                        <span className="font-medium">
+                                            {formatThaiDate(selectedBookedInfo.date)} | เวลา: {selectedBookedInfo.time}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* ชื่อ */}
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium text-gray-600">ชื่อผู้จอง</label>
+                                    <div className="flex items-center gap-2 p-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                        <span className="material-symbols-outlined text-purple-600"></span>
+                                        <span>{selectedBookedInfo.name}</span>
+                                    </div>
+                                </div>
+
+                                {/* รหัส */}
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium text-gray-600">รหัสประจำตัว</label>
+                                    <div className="flex items-center gap-2 p-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                        <span className="material-symbols-outlined text-purple-600"></span>
+                                        <span>{selectedBookedInfo.code}</span>
+                                    </div>
+                                </div>
+
+                                {/* เบอร์โทร */}
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium text-gray-600">เบอร์โทรศัพท์</label>
+                                    <div className="flex items-center gap-2 p-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                        <span className="material-symbols-outlined text-purple-600"></span>
+                                        <span>{selectedBookedInfo.phone}</span>
+                                    </div>
+                                </div>
+
+                                {/* หมายเหตุ */}
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium text-gray-600">หมายเหตุ</label>
+                                    <div className="p-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                        <span>{selectedBookedInfo.description || "—"}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Action */}
+                            <div className="modal-action p-4 border-t bg-gray-50">
+                                <button
+                                    onClick={() => setSelectedBookedInfo(null)}
+                                    className="btn btn-md rounded-full bg-purple-600 hover:bg-purple-700 text-white px-6"
+                                >
+                                    ปิด
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex justify-end mt-6">
-                            <button
-                                onClick={() => setSelectedBookedInfo(null)}
-                                className="px-6 py-2 bg-gray-300 hover:bg-gray-400 rounded-full text-sm font-medium text-gray-800"
-                            >
-                                ปิด
-                            </button>
-                        </div>
-                    </div>
+
+                        {/* คลิกนอก modal เพื่อปิด */}
+                        <form method="dialog" className="modal-backdrop">
+                            <button onClick={() => setSelectedBookedInfo(null)}></button>
+                        </form>
+                    </dialog>
                 )}
+
             </div>
         </>
     );

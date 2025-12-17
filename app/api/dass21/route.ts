@@ -3,7 +3,17 @@ import prisma from "@/utils/db";
 
 export async function GET() {
     try {
-        const dass21List = await prisma.dass_21_result.findMany({})
+        const dass21List = await prisma.dass_21_result.findMany({
+            include:{
+                user_consent:{
+                    select:{
+                        name:true,
+                        phone:true,
+                        student_id:true
+                    }
+                }
+            }
+        })
 
         return NextResponse.json({ dass21List })
     } catch (error: unknown) {

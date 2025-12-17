@@ -2,14 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/utils/db";
 import type { appointments } from "@prisma/client";
 
-
+const formatThaiDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("th-TH", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        weekday: "long"
+    });
+};
 
 //ข้อมูลการนัดหมายทั้งหมด 
 export async function GET() {
     try {
         const showAppoinment: appointments[] = await prisma.appointments.findMany({
             orderBy: [
-                { date: "desc" }
+                { date: "desc" },
+                { time: "desc" }
             ]
         })
         return NextResponse.json({ showAppoinment }, { status: 200 })
@@ -53,19 +62,34 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "มีการจองในวันและเวลาดังกล่าวแล้ว " }, { status: 409 })
         }
 
-        await prisma.appointments.create({
+        const appointment = await prisma.appointments.create({
             data: {
-                userId: userId,
-                name: name,
-                date: date,
-                code: code,
-                phone: phone,
-                time: time,
-                description: description
+                userId,
+                name,
+                date,
+                code,
+                phone,
+                time,
+                description
             }
-        })
+        });
 
-        return NextResponse.json({ message: "Create Appoinment Success !" }, { status: 200 })
+
+        // 2) สร้าง Notification ตามเหตุการณ์
+        await prisma.notifications.create({
+            data: {
+                userId,
+                type: "APPOINTMENT_CREATED",
+                title: "การนัดหมายใหม่ถูกสร้างแล้ว",
+                message: `คุณได้สร้างนัดหมายวันที่ ${formatThaiDate(date)} เวลา ${time}`,
+                appointmentId: appointment.id
+            }
+        });
+
+        return NextResponse.json(
+            { message: "Create Appointment Success!" },
+            { status: 200 }
+        );
 
     } catch (error: unknown) {
         if (error instanceof Error) {

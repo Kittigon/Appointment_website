@@ -86,9 +86,9 @@ const AdminManage = () => {
         }
     };
 
-    const handleRemove = async(id: number) => {
+    const handleRemove = async (id: number) => {
         try {
-            const res = await fetch(`/api/user/`+id,{
+            const res = await fetch(`/api/user/` + id, {
                 method: "DELETE",
                 headers: {
                     'Content-type': "application/json"
@@ -103,6 +103,27 @@ const AdminManage = () => {
             console.log('เกิดข้อผิดพลาดในการลบข้อมูล : ', error)
         }
     }
+
+    const handleRoleChange = async (id: number, newRole: string) => {
+        try {
+            const res = await fetch(`/api/user/role/` + id, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ role: newRole })
+            });
+
+            if (res.ok) {
+                alert("อัปเดตบทบาทสำเร็จ");
+                fetchAppointments();
+            }
+
+        } catch (error) {
+            console.log("เกิดข้อผิดพลาดในการอัปเดตบทบาท: ", error);
+        }
+    };
+
 
     return (
         <>
@@ -128,7 +149,18 @@ const AdminManage = () => {
                                         <td className="border-b border-gray-200 p-2">{item.id}</td>
                                         <td className="border-b border-gray-200 p-2">{item.name}</td>
                                         <td className="border-b border-gray-200 p-2">{item.email}</td>
-                                        <td className="border-b border-gray-200 p-2">{item.role}</td>
+                                        <td className="border-b border-gray-200 p-2">
+                                            <select
+                                                className="border rounded-md px-2 py-1 outline-purple-500"
+                                                value={item.role}
+                                                onChange={(e) => handleRoleChange(item.id, e.target.value)}
+                                            >
+                                                <option value="USER">USER</option>
+                                                <option value="ADMIN">ADMIN</option>
+                                                <option value="MENTALHEALTH">MENTALHEALTH</option>
+                                            </select>
+                                        </td>
+
                                         <td className="border-b border-gray-200 p-2">
                                             {item.updateAt
                                                 ? typeof item.updateAt === 'string'

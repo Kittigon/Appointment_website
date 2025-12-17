@@ -72,7 +72,7 @@ const AdminReportProblem = () => {
                         r.id === id ? { ...r, status: newStatus as ReportProblemWithUser["status"] } : r
                     )
                 )
-                alert("Status updated successfully")
+                alert("อัปเดตสถานะสําเร็จ")
             } else {
                 console.log("Failed to update status")
             }

@@ -11,7 +11,9 @@ import {
     UserCog,
     KeyRound,
     LogOut,
-    Menu
+    Menu,
+    Upload,
+    MonitorX
 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode } from "react";
@@ -88,6 +90,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     </Link>
 
                     <Link
+                        href="/admin/close-day"
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-purple-100 text-slate-700 hover:text-purple-700 transition"
+                    >
+                        <MonitorX className="w-5 h-5" /> ตั้งค่าวันปิดให้บริการ
+                    </Link>
+
+                    <Link
                         href="/admin/evaluations"
                         className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-purple-100 text-slate-700 hover:text-purple-700 transition"
                     >
@@ -99,6 +108,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-purple-100 text-slate-700 hover:text-purple-700 transition"
                     >
                         <AlertTriangle className="w-5 h-5" /> รายงานปัญหา
+                    </Link>
+
+                    <Link
+                        href="/admin/upload"
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-purple-100 text-slate-700 hover:text-purple-700 transition"
+                    >
+                        <Upload className="w-5 h-5" /> อัปโหลดไฟล์ CSV
                     </Link>
 
                     <Link

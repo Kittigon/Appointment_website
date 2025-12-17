@@ -1,29 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-wrapper-object-types, @typescript-eslint/no-unused-vars */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/utils/db";
 import bcrypt from 'bcrypt'
 
 // =========================
-// RouteContext Type
-// =========================
-type SegmentParams<T extends Object = any> = T extends Record<string, any>
-    ? { [K in keyof T]: T[K] extends string ? string | string[] | undefined : never }
-    : T
-
-type RouteContext = { params: SegmentParams }
-
-// =========================
 // GET - ดึงข้อมูลผู้ใช้ตาม id
 // =========================
-export async function GET(req: NextRequest, context: RouteContext) {
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        const id = Number(context.params.id)
-        if (isNaN(id)) {
+        const id = await context.params;
+        const idNum = Number(id.id)
+        if (isNaN(idNum)) {
             return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
         }
 
         const showuser = await prisma.users.findUnique({
-            where: { id },
+            where: { id: idNum },
             select: { email: true, name: true, gender: true, age: true }
         })
 
@@ -44,10 +35,11 @@ interface EditUser {
     age: number;
 }
 
-export async function PUT(req: NextRequest, context: RouteContext) {
+export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        const id = Number(context.params.id)
-        if (isNaN(id)) {
+        const id = await context.params;
+        const idNum = Number(id.id)
+        if (isNaN(idNum)) {
             return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
         }
 
@@ -55,7 +47,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         const { email, name, gender, age } = body
 
         await prisma.users.update({
-            where: { id },
+            where: { id: idNum },
             data: { email, name, gender, age }
         })
 
@@ -73,10 +65,11 @@ interface ChangePassword {
     password: string;
 }
 
-export async function PATCH(req: NextRequest, context: RouteContext) {
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        const id = Number(context.params.id)
-        if (isNaN(id)) {
+        const id = await context.params;
+        const idNum = Number(id.id)
+        if (isNaN(idNum)) {
             return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
         }
 
@@ -84,7 +77,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
         const hashPassword = await bcrypt.hash(password, 10)
 
         await prisma.users.update({
-            where: { id },
+            where: { id: idNum },
             data: { password: hashPassword }
         })
 
@@ -98,14 +91,15 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 // =========================
 // DELETE - ลบผู้ใช้
 // =========================
-export async function DELETE(req: NextRequest, context: RouteContext) {
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        const id = Number(context.params.id)
-        if (isNaN(id)) {
+        const id = await context.params;
+        const idNum = Number(id.id)
+        if (isNaN(idNum)) {
             return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
         }
 
-        await prisma.users.delete({ where: { id } })
+        await prisma.users.delete({ where: { id: idNum } })
         return NextResponse.json({ message: "Delete User Success!" }, { status: 200 })
     } catch (error: unknown) {
         console.error("DELETE ID User Error:", error)
