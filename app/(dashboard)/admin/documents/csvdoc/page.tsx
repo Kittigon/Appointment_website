@@ -12,22 +12,34 @@ export default function DocumentsPage() {
     const [docs, setDocs] = useState<Document[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // modal state
+    // pagination
+    const [page, setPage] = useState(1);
+    const limit = 10;
+    const [totalPages, setTotalPages] = useState(1);
+
+    // modal edit
     const [editingDoc, setEditingDoc] = useState<Document | null>(null);
     const [editContent, setEditContent] = useState("");
     const [saving, setSaving] = useState(false);
 
-    const loadData = async () => {
+    const loadData = async (pageNumber = page) => {
         setLoading(true);
-        const res = await fetch("/api/system/upload");
-        const data = await res.json();
-        setDocs(data);
+
+        const res = await fetch(
+            `/api/system/upload?page=${pageNumber}&limit=${limit}`
+        );
+        const json = await res.json();
+
+        setDocs(json.data);
+        setTotalPages(json.pagination.totalPages);
+        setPage(json.pagination.page);
+
         setLoading(false);
     };
 
     useEffect(() => {
-        loadData();
-    }, []);
+        loadData(page);
+    }, [page]);
 
     const handleDelete = async (id: number) => {
         if (!confirm("ต้องการลบข้อมูลนี้หรือไม่")) return;
@@ -36,7 +48,7 @@ export default function DocumentsPage() {
             method: "DELETE",
         });
 
-        loadData();
+        loadData(page);
     };
 
     const openEditModal = (doc: Document) => {
@@ -62,60 +74,137 @@ export default function DocumentsPage() {
 
         setSaving(false);
         closeEditModal();
-        loadData();
+        loadData(page);
     };
 
     return (
         <div className="p-6 space-y-4">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-semibold">แสดงข้อมูล CSV</h1>
-                <Link
-                    href="/admin/documents/upload"
-                    className="bg-blue-600 text-white px-4 py-2 rounded"
-                >
-                    Upload CSV
-                </Link>
+
+                <div className="flex gap-2">
+                    <button
+                        onClick={() =>
+                            window.location.href =
+                                "/api/system/documents/export/pdf"
+                        }
+                        className="bg-gray-600 text-white px-4 py-2 rounded"
+                    >
+                        Export PDF
+                    </button>
+
+                    <button
+                        onClick={() =>
+                            window.location.href =
+                                "/api/system/documents/export"
+                        }
+                        className="bg-green-600 text-white px-4 py-2 rounded"
+                    >
+                        Export CSV
+                    </button>
+
+                    <Link
+                        href="/admin/documents/upload"
+                        className="bg-blue-600 text-white px-4 py-2 rounded"
+                    >
+                        Upload CSV
+                    </Link>
+
+                    <button
+                        onClick={async () => {
+                            if (
+                                !confirm(
+                                    "⚠️ ต้องการลบ documents ทั้งหมดจริงหรือไม่?"
+                                )
+                            )
+                                return;
+
+                            await fetch("/api/system/documents/clear", {
+                                method: "DELETE",
+                            });
+
+                            alert("ลบข้อมูลทั้งหมดแล้ว");
+                            location.reload();
+                        }}
+                        className="bg-red-600 text-white px-4 py-2 rounded"
+                    >
+                        ลบเอกสารทั้งหมด
+                    </button>
+                </div>
             </div>
 
             {loading ? (
                 <p>กำลังโหลดข้อมูล...</p>
             ) : (
-                <table className="w-full border">
-                    <thead>
-                        <tr className="bg-gray-100">
-                            <th className="border p-2 w-20">ID</th>
-                            <th className="border p-2">Content (preview)</th>
-                            <th className="border p-2 w-32">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {docs.map((doc) => (
-                            <tr key={doc.id}>
-                                <td className="border p-2 text-center">{doc.id}</td>
-                                <td className="border p-2">
-                                    {doc.content.slice(0, 200)}...
-                                </td>
-                                <td className="border p-2 text-center space-x-2">
-                                    <button
-                                        onClick={() => openEditModal(doc)}
-                                        className="text-blue-600"
-                                    >
-                                        แก้ไข
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(doc.id)}
-                                        className="text-red-600"
-                                    >
-                                        ลบ
-                                    </button>
-                                </td>
+                <>
+                    <table className="w-full border">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th className="border p-2 w-20">ID</th>
+                                <th className="border p-2">
+                                    Content (preview)
+                                </th>
+                                <th className="border p-2 w-32">Action</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {docs.map((doc) => (
+                                <tr key={doc.id}>
+                                    <td className="border p-2 text-center">
+                                        {doc.id}
+                                    </td>
+                                    <td className="border p-2">
+                                        {doc.content.slice(0, 200)}...
+                                    </td>
+                                    <td className="border p-2 text-center space-x-2">
+                                        <button
+                                            onClick={() =>
+                                                openEditModal(doc)
+                                            }
+                                            className="text-blue-600"
+                                        >
+                                            แก้ไข
+                                        </button>
+                                        <button
+                                            onClick={() =>
+                                                handleDelete(doc.id)
+                                            }
+                                            className="text-red-600"
+                                        >
+                                            ลบ
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    {/* Pagination */}
+                    <div className="flex justify-center items-center gap-2 mt-4">
+                        <button
+                            disabled={page === 1}
+                            onClick={() => setPage((p) => p - 1)}
+                            className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                            ก่อนหน้า
+                        </button>
+
+                        <span>
+                            หน้า {page} / {totalPages}
+                        </span>
+
+                        <button
+                            disabled={page === totalPages}
+                            onClick={() => setPage((p) => p + 1)}
+                            className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                            ถัดไป
+                        </button>
+                    </div>
+                </>
             )}
 
-            {/* ===== Modal แก้ไข ===== */}
+            {/* Modal Edit */}
             {editingDoc && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
                     <div className="bg-white w-full max-w-2xl rounded-lg p-6 space-y-4">
@@ -125,7 +214,9 @@ export default function DocumentsPage() {
 
                         <textarea
                             value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
+                            onChange={(e) =>
+                                setEditContent(e.target.value)
+                            }
                             rows={10}
                             className="w-full border p-2"
                         />

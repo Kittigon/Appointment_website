@@ -5,17 +5,44 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 // route.ts
-export async function GET() {
-    const data = await prisma.documents.findMany({
-        select: {
-            id: true,
-            content: true
-        },
-        orderBy: { id: "desc" },
-        take: 100
-    });
+export async function GET(req: NextRequest) {
+    try {
+        const { searchParams } = new URL(req.url);
 
-    return NextResponse.json(data);
+        const page = Number(searchParams.get("page") || 1);
+        const limit = Number(searchParams.get("limit") || 10);
+
+        const skip = (page - 1) * limit;
+
+        const [data, total] = await Promise.all([
+            prisma.documents.findMany({
+                select: {
+                    id: true,
+                    content: true,
+                },
+                orderBy: { id: "desc" },
+                skip,
+                take: limit,
+            }),
+            prisma.documents.count(),
+        ]);
+
+        return NextResponse.json({
+            data,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        });
+    } catch (error) {
+        console.error("GET documents error:", error);
+        return NextResponse.json(
+            { error: "Failed to load documents" },
+            { status: 500 }
+        );
+    }
 }
 
 export async function POST(req: NextRequest) {

@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import type { Notifications, users } from "@prisma/client";
 
+const ITEMS_PER_PAGE = 3;
+
 const formatThaiDate = (dateStr: string): string => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('th-TH', {
@@ -16,8 +18,9 @@ export default function NotificationsPage() {
     const [notifications, setNotifications] = useState<Notifications[]>([]);
     const [user, setUser] = useState<users | null>(null);
     const [loading, setLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
 
-    // โหลด user ก่อน
+    // โหลด user
     useEffect(() => {
         const loadUser = async () => {
             try {
@@ -26,9 +29,7 @@ export default function NotificationsPage() {
                     credentials: "include"
                 });
                 const data = await res.json();
-                if (res.ok) {
-                    setUser(data.user);
-                }
+                if (res.ok) setUser(data.user);
             } catch (err) {
                 console.log("Error loading user:", err);
             }
@@ -36,7 +37,7 @@ export default function NotificationsPage() {
         loadUser();
     }, []);
 
-    // โหลด notifications เมื่อมี user
+    // โหลด notifications
     useEffect(() => {
         if (!user?.id) return;
 
@@ -44,11 +45,7 @@ export default function NotificationsPage() {
             try {
                 const res = await fetch("/api/system/notifications/user/" + user.id);
                 const data = await res.json();
-
-                const list = Array.isArray(data)
-                    ? data
-                    : data?.notifications || [];
-
+                const list = Array.isArray(data) ? data : data?.notifications || [];
                 setNotifications(list);
             } catch (err) {
                 console.log("Error loading notifications:", err);
@@ -58,6 +55,14 @@ export default function NotificationsPage() {
         };
         loadNotifications();
     }, [user]);
+
+    // ===== Pagination logic =====
+    const totalPages = Math.ceil(notifications.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const currentItems = notifications.slice(
+        startIndex,
+        startIndex + ITEMS_PER_PAGE
+    );
 
     return (
         <>
@@ -69,25 +74,52 @@ export default function NotificationsPage() {
                 <div className="w-full max-w-2xl px-4">
                     {loading ? (
                         <p className="text-center text-gray-500">กำลังโหลด...</p>
-                    ) : notifications.length === 0 ? (
+                    ) : currentItems.length === 0 ? (
                         <p className="text-center text-gray-500">ไม่มีการแจ้งเตือน</p>
                     ) : (
-                        <div className="flex flex-col gap-4 items-center">
-                            {notifications.map((item) => (
-                                <div
-                                    key={item.id}
-                                    className="w-full rounded-2xl border bg-white shadow p-5 max-w-xl"
+                        <>
+                            <div className="flex flex-col gap-4 items-center">
+                                {currentItems.map((item) => (
+                                    <div
+                                        key={item.id}
+                                        className="w-full rounded-2xl border bg-white shadow p-5 max-w-xl"
+                                    >
+                                        <h2 className="font-semibold text-lg">
+                                            {item.title}
+                                        </h2>
+                                        <p className="text-gray-600 whitespace-pre-line mt-1">
+                                            {item.message}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-3">
+                                            {formatThaiDate(item.createdAt.toString())}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Pagination controls */}
+                            <div className="flex justify-center gap-3 mt-6">
+                                <button
+                                    disabled={currentPage === 1}
+                                    onClick={() => setCurrentPage(p => p - 1)}
+                                    className="px-4 py-2 rounded bg-gray-200 disabled:opacity-50"
                                 >
-                                    <h2 className="font-semibold text-lg">{item.title}</h2>
-                                    <p className="text-gray-600 whitespace-pre-line mt-1">
-                                        {item.message}
-                                    </p>
-                                    <p className="text-xs text-gray-400 mt-3">
-                                        {formatThaiDate(item.createdAt.toString())}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
+                                    ก่อนหน้า
+                                </button>
+
+                                <span className="px-4 py-2 text-sm">
+                                    หน้า {currentPage} / {totalPages}
+                                </span>
+
+                                <button
+                                    disabled={currentPage === totalPages}
+                                    onClick={() => setCurrentPage(p => p + 1)}
+                                    className="px-4 py-2 rounded bg-gray-200 disabled:opacity-50"
+                                >
+                                    ถัดไป
+                                </button>
+                            </div>
+                        </>
                     )}
                 </div>
             </div>
