@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import {toast} from "react-hot-toast";
 
 type Report = {
     id: number;
@@ -39,6 +40,7 @@ const ReportProblem = () => {
             }
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
+            toast.error("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้");
         }
     };
 
@@ -88,10 +90,11 @@ const ReportProblem = () => {
                 const jsonReports = await resReports.json();
                 setReports(jsonReports);
 
-                alert("ส่งรายงานปัญหาสำเร็จ");
+                toast.success("ส่งรายงานปัญหาสำเร็จ");
             }
         } catch (error) {
             console.error("Error submitting report:", error);
+            toast.error("เกิดข้อผิดพลาดในการส่งรายงานปัญหา");
         }
     };
 

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from "react";
 import { appointmentSchema } from "@/schemas/appointment";
+import toast from 'react-hot-toast'
 
 // กำหนดเวลาในแต่ละวัน
 // สามารถปรับเปลี่ยนได้ตามต้องการ
@@ -75,6 +76,13 @@ type DisabledDate = {
     date: string;
 };
 
+type FormErrors = {
+    name?: string;
+    code?: string;
+    phone?: string;
+    description?: string;
+}
+
 const UserAppointment = () => {
     const [status, setStatus] = useState<Record<string, Record<string, boolean>>>({});
     const [selectedDate, setSelectedDate] = useState('');
@@ -91,6 +99,8 @@ const UserAppointment = () => {
     const [dateList, setDateList] = useState(getNextWeekdays(0));
 
     const [disabledDates, setDisabledDates] = useState<string[]>([]);
+
+    const [errors, setErrors] = useState<FormErrors>({});
 
     // const initStatus: Record<string, Record<string, boolean>> = {}
     // dateList.forEach(date => {
@@ -140,6 +150,15 @@ const UserAppointment = () => {
         setDisabledDates(arr);
     };
 
+
+    // โหลดชื่อผู้ใช้
+    useEffect(() => {
+        if (data?.name) {
+            setName(data.name)
+            setErrors(prev => ({ ...prev, name: undefined }))
+        }
+    }, [data])
+
     //โหลดข้อมูลการนัดหมาย
     useEffect(() => {
         const newDates = getNextWeekdays(offset)
@@ -160,13 +179,13 @@ const UserAppointment = () => {
         if (!status[date][time]) return;
 
         if (disabledDates.includes(date)) {
-            alert("วันนี้ถูกปิดไม่สามารถจองได้");
+            toast.error("วันนี้ถูกปิดไม่สามารถจองได้");
             return;
         }
 
         const checkDay = new Date(date).getDay();
         if (checkDay === 0 || checkDay === 6) {
-            alert("ไม่สามารถจองวันเสาร์-อาทิตย์ได้");
+            toast.error("ไม่สามารถจองวันเสาร์-อาทิตย์ได้");
             return;
         }
 
@@ -179,7 +198,7 @@ const UserAppointment = () => {
         // ถ้าเวลาที่เลือกน้อยกว่าเวลาปัจจุบัน + 2 ชั่วโมง ไม่ให้เลือก
         const minDiffMs = 2 * 60 * 60 * 1000; // 2 ชั่วโมง
         if (selected.getTime() - now.getTime() < minDiffMs) {
-            alert("กรุณาเลือกเวลาล่วงหน้าอย่างน้อย 2 ชั่วโมง");
+            toast.error("กรุณาเลือกเวลาล่วงหน้าอย่างน้อย 2 ชั่วโมง")
             return;
         }
 
@@ -202,10 +221,17 @@ const UserAppointment = () => {
                 date: selectedDate,
                 time: selectedTime
             });
-            
+
             if (!validateData.success) {
-                const errorMessages = validateData.error.issues.map(err => err.message).join("\n");
-                return alert(`\n${errorMessages}`);
+                const newErrors: FormErrors = {};
+                // Map Zod issues ไปยัง errors state
+                validateData.error.issues.forEach(issue => {
+                    const field = issue.path[0] as keyof FormErrors;
+                    newErrors[field] = issue.message;
+                });
+                setErrors(newErrors);
+                toast.error("กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง");
+                return;
             }
             // if (!name || !code || !phone) return alert("กรุณากรอกข้อมูลให้ครบ");
 
@@ -240,7 +266,7 @@ const UserAppointment = () => {
                 }));
             }
 
-            alert(`จองสำเร็จ: ${selectedDate} เวลา ${selectedTime}`);
+            toast.success(`จองสำเร็จ: ${selectedDate} เวลา ${selectedTime}`);
 
             // รีเซ็ตฟอร์ม
             setSelectedDate("");
@@ -253,6 +279,7 @@ const UserAppointment = () => {
         } catch (error: unknown) {
             if (error instanceof Error) {
                 console.log("Create Appoinment Failed : ", error.message)
+                toast.error("เกิดข้อผิดพลาด: " + error.message);
             } else {
                 console.log("Unknow error in Load Appoinment : ", error)
             }
@@ -260,6 +287,25 @@ const UserAppointment = () => {
     };
 
     const thaiMonthYear = dateList.length ? formatThaiMonthYear(dateList[0]) : '';
+
+    // Helper ในการล้าง error เมื่อ User เริ่มพิมพ์ใหม่
+    const handleChange = (setter: React.Dispatch<React.SetStateAction<string>>, field: keyof FormErrors, value: string) => {
+        setter(value);
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: undefined }));
+        }
+    }
+    
+    const resetForm = () => {
+        setSelectedDate("");
+        setSelectedTime("");
+        setName(data?.name ?? "");
+        setCode("");
+        setPhone("");
+        setdescription("");
+        setErrors({});
+    };
+
 
     return (
         <>
@@ -365,11 +411,10 @@ const UserAppointment = () => {
                     <div className="bg-white shadow-md rounded-lg p-4 md:p-6 mt-6">
                         <div className="flex items-center justify-between ">
                             <h2 className="text-xl font-semibold text-gray-800 mb-4">กรอกข้อมูลการนัดหมาย</h2>
-                            <span className="text-red-500">***  สถานที่นัดหมาย : อาคารสงวนเสริมศรี  ***</span>
+                            <span className="text-red-500">*** สถานที่นัดหมาย : อาคารสงวนเสริมศรี ***</span>
                         </div>
 
                         <p className="text-md text-gray-600 my-2">
-                            {/* วันที่: <span className="font-medium ">{formatThaiDate(selectedDate)}</span> | เวลา: <span className="font-medium">{selectedTime}</span> */}
                             <input type="text"
                                 value={`${formatThaiDate(selectedDate)} | เวลา: ${selectedTime}`}
                                 readOnly
@@ -378,34 +423,56 @@ const UserAppointment = () => {
                         </p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <input
-                                type="text"
-                                placeholder="ชื่อ-นามสกุล"
-                                value={name}
-                                onChange={e => setName(e.target.value)}
-                                className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                            />
-                            <input
-                                type="number"
-                                placeholder="รหัส"
-                                value={code}
-                                onChange={e => setCode(e.target.value)}
-                                className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                            />
-                            <input
-                                type="number"
-                                placeholder="เบอร์โทรศัพท์"
-                                value={phone}
-                                onChange={e => setPhone(e.target.value)}
-                                className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                            />
-                            <textarea
-                                placeholder="หมายเหตุ (ถ้ามี)"
-                                value={description}
-                                onChange={e => setdescription(e.target.value)}
-                                rows={3}
-                                className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 col-span-1 md:col-span-2"
-                            />
+                            {/* Input: ชื่อ-นามสกุล */}
+                            <div className="flex flex-col">
+                                <input
+                                    type="text"
+                                    placeholder="ชื่อ-นามสกุล"
+                                    value={name}
+                                    onChange={e => handleChange(setName, 'name', e.target.value)}
+                                    className={`p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 
+                                        ${errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                />
+                                {errors.name && <span className="text-red-500 text-sm mt-1">{errors.name}</span>}
+                            </div>
+
+                            {/* Input: รหัส */}
+                            <div className="flex flex-col">
+                                <input
+                                    type="number" // หรือ text ถ้าต้องการรับตัวอักษร
+                                    placeholder="รหัส"
+                                    value={code}
+                                    onChange={e => handleChange(setCode, 'code', e.target.value)}
+                                    className={`p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400
+                                        ${errors.code ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                />
+                                {errors.code && <span className="text-red-500 text-sm mt-1">{errors.code}</span>}
+                            </div>
+
+                            {/* Input: เบอร์โทรศัพท์ */}
+                            <div className="flex flex-col">
+                                <input
+                                    type="number"
+                                    placeholder="เบอร์โทรศัพท์"
+                                    value={phone}
+                                    onChange={e => handleChange(setPhone, 'phone', e.target.value)}
+                                    className={`p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400
+                                        ${errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                />
+                                {errors.phone && <span className="text-red-500 text-sm mt-1">{errors.phone}</span>}
+                            </div>
+
+                            {/* Textarea: หมายเหตุ */}
+                            <div className="flex flex-col col-span-1 md:col-span-2">
+                                <textarea
+                                    placeholder="หมายเหตุ (ถ้ามี)"
+                                    value={description}
+                                    onChange={e => handleChange(setdescription, 'description', e.target.value)}
+                                    rows={3}
+                                    className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                />
+                                {/* หมายเหตุ มักจะเป็น optional อาจจะไม่ต้อง show error แต่ถ้า schema บังคับก็ใส่ได้เหมือนข้างบน */}
+                            </div>
                         </div>
 
                         <div className="flex flex-col md:flex-row justify-end gap-4">
@@ -418,9 +485,7 @@ const UserAppointment = () => {
 
                             <button
                                 onClick={() => {
-                                    setSelectedDate("");
-                                    setSelectedTime("");
-                                    setName("");
+                                    resetForm()
                                 }}
                                 className="w-full md:w-auto bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-6 rounded-full"
                             >

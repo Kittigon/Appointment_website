@@ -2,17 +2,18 @@
 
 import { useState, useEffect } from "react";
 // เพิ่ม Icon ใหม่ๆ เพื่อความสวยงาม
-import { 
-    CalendarDays, 
-    Clock, 
-    MapPin, 
-    CalendarCheck2, 
-    AlertCircle, 
-    XCircle, 
+import {
+    CalendarDays,
+    Clock,
+    MapPin,
+    CalendarCheck2,
+    AlertCircle,
+    XCircle,
     CheckCircle2,
     Info
 } from 'lucide-react';
 import type { appointments } from "@prisma/client";
+import toast from 'react-hot-toast'
 
 type User = {
     id: number;
@@ -50,6 +51,7 @@ const UserInfocheck = () => {
             }
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
+            toast.error("ไม่สามารถระบุตัวตนผู้ใช้ได้");
         }
     };
 
@@ -72,8 +74,9 @@ const UserInfocheck = () => {
             } catch (error: unknown) {
                 if (error instanceof Error) {
                     console.log("Fetch Appointment failed:", error.message);
+                    toast.error(`โหลดข้อมูลนัดหมายล้มเหลว: ${error.message}`);
                 } else {
-                    console.log("Unknown error in Fetch Appointment!", error);
+                    toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
                 }
             }
             setLoading(false);
@@ -83,8 +86,11 @@ const UserInfocheck = () => {
     }, [data?.id]);
 
     const handleCancel = async (id: number) => {
-        // เพิ่ม confirm ก่อนลบเพื่อความปลอดภัย
-        if(!confirm("คุณต้องการยกเลิกการนัดหมายนี้ใช่หรือไม่?")) return;
+        // 1. Native Confirm ยังใช้ได้ (หรือจะทำ Custom Modal ทีหลังก็ได้)
+        if (!confirm("คุณต้องการยกเลิกการนัดหมายนี้ใช่หรือไม่?")) return;
+
+        // 2. เริ่มต้น Toast Loading
+        const toastId = toast.loading('กำลังดำเนินการยกเลิก...');
 
         try {
             const res = await fetch(`/api/appointments/${id}`, {
@@ -93,16 +99,23 @@ const UserInfocheck = () => {
             });
 
             if (res.ok) {
-                alert('ยกเลิกการนัดหมายสำเร็จ !!!');
-                // โหลดใหม่
+                // 3. แจ้ง Success (อัปเดต toastId เดิม)
+                toast.success('ยกเลิกการนัดหมายสำเร็จ !!!', { id: toastId });
+
+                // โหลดข้อมูลใหม่
                 if (data?.id) {
                     const resReload = await fetch(`/api/appointments/check?userId=${data.id}`);
                     const resultReload = await resReload.json();
                     setAppointment(resultReload.showAppoinment || []);
                 }
+            } else {
+                // กรณี Server ตอบกลับมาว่าไม่สำเร็จ (เช่น 400, 500)
+                throw new Error('Failed to delete');
             }
         } catch (error) {
             console.log("Error canceling:", error);
+            // 4. แจ้ง Error
+            toast.error('เกิดข้อผิดพลาดในการยกเลิก', { id: toastId });
         }
     };
 
@@ -142,11 +155,11 @@ const UserInfocheck = () => {
 
                                 {/* Main Layout: บน PC แบ่งเป็น Grid 2 คอลัมน์ หรือ Flex row */}
                                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                                    
+
                                     {/* ส่วนหัวสี Gradient */}
                                     <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-6 md:p-8">
                                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                                            
+
                                             {/* วันที่ */}
                                             <div className="flex items-center gap-4">
                                                 <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
@@ -181,7 +194,7 @@ const UserInfocheck = () => {
                                     {/* ส่วนเนื้อหา (Location & Status) */}
                                     <div className="p-6 md:p-8">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
-                                            
+
                                             {/* ฝั่งซ้าย: สถานที่ */}
                                             <div className="flex items-start gap-4">
                                                 <div className="bg-orange-100 p-3 rounded-full text-orange-600 mt-1">
@@ -201,7 +214,7 @@ const UserInfocheck = () => {
                                                 </div>
                                                 <div>
                                                     <p className="text-gray-500 text-sm font-medium mb-2">สถานะการนัดหมาย</p>
-                                                    
+
                                                     {(() => {
                                                         const statusMap: Record<string, { label: string, color: string, icon: React.ReactNode }> = {
                                                             "PENDING": { label: "รอการยืนยัน", color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: <AlertCircle size={16} /> },

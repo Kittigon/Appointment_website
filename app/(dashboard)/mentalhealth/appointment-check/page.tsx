@@ -6,6 +6,7 @@ import { Clock, Calendar, CheckCircle, XCircle, Hourglass } from "lucide-react";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { th } from "date-fns/locale/th";
 import "react-datepicker/dist/react-datepicker.css";
+import {toast} from "react-hot-toast";
 
 registerLocale("th", th);
 
@@ -64,6 +65,7 @@ export default function MentalhealthList() {
 
         } catch (err) {
             console.error("Fetch failed:", err);
+            toast.error("ไม่สามารถดึงข้อมูลการนัดหมายได้");
         }
     };
 
@@ -87,7 +89,7 @@ export default function MentalhealthList() {
     const updateStatus = async (newStatus: string) => {
         if (!selected) return;
         if (newStatus === "CANCELLED" && !reason.trim()) {
-            alert("กรุณาระบุเหตุผลการยกเลิก");
+            toast.error("โปรดระบุเหตุผลสำหรับการยกเลิก");
             return;
         }
         try {
@@ -97,17 +99,21 @@ export default function MentalhealthList() {
                 body: JSON.stringify({ status: newStatus, reason }),
             });
             if (res.ok) {
+                toast.success("อัปเดตสถานะเรียบร้อยแล้ว");
                 setSelected(null);
                 setReason("");
                 fetchAppointments();
             } else {
-                alert("อัปเดตสถานะไม่สำเร็จ (Mock Mode: Success)");
+                toast.error("ไม่สามารถอัปเดตสถานะได้");
                 // Mock Success for UI testing
                 setSelected(null);
                 setReason("");
             }
         } catch {
-            alert("เกิดข้อผิดพลาด");
+            toast.error("เกิดข้อผิดพลาดในการอัปเดตสถานะ");
+            // Mock Success for UI testing
+            setSelected(null);
+            setReason("");
         }
     };
 

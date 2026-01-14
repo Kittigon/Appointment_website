@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import type { appointments } from "@prisma/client"
 import { CalendarDays, Clock, User2, Phone, BadgeCheck, CheckCircle, XCircle, Hourglass } from 'lucide-react'
+import {toast} from "react-hot-toast"
 
 const formatThaiDate = (dateStr: string): string => {
     const date = new Date(dateStr);
@@ -39,6 +40,7 @@ const MentalhealthHistory = () => {
 
         } catch (error) {
             console.error('เกิดข้อผิดพลาดในการโหลดข้อมูล:', error);
+            toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
         }
 
         setLoading(false);
@@ -53,7 +55,6 @@ const MentalhealthHistory = () => {
         }
     };
 
-    console.log(appointments)
 
     return (
         <>

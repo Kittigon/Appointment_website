@@ -4,6 +4,7 @@ import {
     AlertTriangle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import {toast} from "react-hot-toast";
 
 interface Alert {
     id: number;
@@ -43,6 +44,7 @@ export default function AdminDashboardSimple() {
 
         } catch (error) {
             console.error("Error fetching user count:", error);
+            toast.error("ไม่สามารถโหลดข้อมูลได้ในขณะนี้");
         }
     }
 

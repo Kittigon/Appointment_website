@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 type Document = {
     id: number;
@@ -127,7 +128,7 @@ export default function DocumentsPage() {
                                 method: "DELETE",
                             });
 
-                            alert("ลบข้อมูลทั้งหมดแล้ว");
+                            toast.success("ลบเอกสารทั้งหมดเรียบร้อยแล้ว");   
                             location.reload();
                         }}
                         className="bg-red-600 text-white px-4 py-2 rounded"

@@ -12,6 +12,7 @@ import {
     AlertCircle 
 } from 'lucide-react';
 import type { appointments } from '@prisma/client'
+import { toast } from 'react-hot-toast';
 
 type User = {
     id: number;
@@ -37,7 +38,7 @@ const UserHistory = () => {
 
     // --- Pagination State ---
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5; // กำหนดจำนวนรายการต่อหน้า
+    const itemsPerPage = 3; // กำหนดจำนวนรายการต่อหน้า
 
     // ดึงข้อมูลผู้ใช้ตอน mount
     const FecthUser = async () => {
@@ -53,6 +54,7 @@ const UserHistory = () => {
             }
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
+            toast.error("ไม่สามารถระบุตัวตนผู้ใช้ได้");
         }
     };
 
@@ -81,6 +83,7 @@ const UserHistory = () => {
                 setCurrentPage(1); // รีเซ็ตไปหน้า 1 ทุกครั้งที่โหลดข้อมูลใหม่
             } catch (error) {
                 console.error('เกิดข้อผิดพลาดในการโหลดข้อมูล:', error);
+                toast.error("โหลดข้อมูลนัดหมายล้มเหลว");
             } finally {
                 setLoading(false);
             }

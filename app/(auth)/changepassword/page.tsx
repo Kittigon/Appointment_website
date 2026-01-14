@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-hot-toast';
 
 type User = {
     id: number;
@@ -30,6 +31,7 @@ export default function ChangePasswordPage() {
             }
         } catch (error) {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:', error);
+            toast.error('ไม่สามารถดึงข้อมูลผู้ใช้ได้');
         } finally {
             setLoading(false);
         }
@@ -69,12 +71,13 @@ export default function ChangePasswordPage() {
             });
 
             if (res.ok) {
-                alert('แก้ไขรหัสผ่านเรียบร้อย!');
+                toast.success('เปลี่ยนรหัสผ่านสำเร็จ');
                 setPassword('');
                 setConfirmPassword('');
             }
         } catch (error) {
             console.error('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน:', error);
+            toast.error('ไม่สามารถเปลี่ยนรหัสผ่านได้');
         }
     };
 

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from "react";
 import { appointmentSchema } from "@/schemas/appointment";
+import { toast } from "react-hot-toast";
 // import { Clock } from 'lucide-react'
 
 const time = ["10:00", "11:00", "13:00", "14:00"];
@@ -54,6 +55,13 @@ type DisabledDate = {
     date: string;
 };
 
+type FormErrors = {
+    name?: string;
+    code?: string;
+    phone?: string;
+    description?: string;
+}
+
 const formatThaiDate = (dateStr: string): string => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('th-TH', {
@@ -93,6 +101,8 @@ const MentalhealthAppointment = () => {
     const [data, setData] = useState<User | null>(null);
     // วันปิด
     const [disabledDates, setDisabledDates] = useState<string[]>([]);
+
+    const [errors, setErrors] = useState<FormErrors>({});
 
 
     // ดึงข้อมูลผู้ใช้
@@ -137,6 +147,7 @@ const MentalhealthAppointment = () => {
             setStatus(updatedStatus);
         } catch (error) {
             console.error("โหลดข้อมูลล้มเหลว:", error);
+            toast.error("โหลดข้อมูลล้มเหลว");
         }
     }, [status]);
 
@@ -166,6 +177,7 @@ const MentalhealthAppointment = () => {
             }
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
+            toast.error("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้");
         }
     };
 
@@ -180,7 +192,7 @@ const MentalhealthAppointment = () => {
     // จัดการการเลือกวันและเวลา
     const handleSelect = (date: string, time: string) => {
         if (disabledDates.includes(date)) {
-            alert("วันนี้ถูกปิดไม่สามารถจองได้");
+            toast.error("ไวันนี้ถูกปิดไม่สามารถจองได้");
             return;
         }
 
@@ -198,12 +210,12 @@ const MentalhealthAppointment = () => {
 
         const dayOfWeek = selected.getDay(); // 0 = Sunday, 6 = Saturday
         if (dayOfWeek === 0 || dayOfWeek === 6) {
-            alert("ไม่สามารถเลือกวันเสาร์-อาทิตย์ได้");
+            toast.error("กรุณาเลือกวันจันทร์-ศุกร์ เท่านั้น");
             return;
         }
 
         if (selected.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
-            alert("กรุณาเลือกเวลาล่วงหน้าอย่างน้อย 2 ชั่วโมง");
+            toast.error("กรุณาจองล่วงหน้าอย่างน้อย 2 ชั่วโมง");
             return;
         }
 
@@ -223,13 +235,16 @@ const MentalhealthAppointment = () => {
             });
 
             if (!validateData.success) {
-                const errorMessages = validateData.error.issues.map(err => err.message).join("\n");
-                return alert(`\n${errorMessages}`);
+                const newErrors: FormErrors = {};
+                // Map Zod issues ไปยัง errors state
+                validateData.error.issues.forEach(issue => {
+                    const field = issue.path[0] as keyof FormErrors;
+                    newErrors[field] = issue.message;
+                });
+                setErrors(newErrors);
+                toast.error("กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง");
+                return;
             }
-
-            // if (!selectedDate || !selectedTime) return alert("กรุณาเลือกวันและเวลา");
-            // if (!name.trim()) return alert("กรุณากรอกชื่อ");
-            // if (!code.trim() || !phone.trim()) return alert("กรุณากรอกรหัสและเบอร์โทรศัพท์");
 
             const userId = data?.id;
 
@@ -264,7 +279,8 @@ const MentalhealthAppointment = () => {
                         }
                     }
                 }));
-                alert(`จองสำเร็จ: ${formatThaiDate(selectedDate)} เวลา ${selectedTime} โดย ${name}`);
+                
+                toast.success(`จองสำเร็จ: ${formatThaiDate(selectedDate)} เวลา ${selectedTime} โดย ${name}`);
                 setSelectedDate("");
                 setSelectedTime("");
                 setName("");
@@ -276,11 +292,19 @@ const MentalhealthAppointment = () => {
         } catch (error: unknown) {
             if (error instanceof Error) {
                 console.log("Create Appointment Failed : ", error.message);
+                toast.error("เกิดข้อผิดพลาด: " + error.message);
             }
         }
     };
 
     const thaiMonthYear = date.length ? formatThaiMonthYear(date[1]) : '';
+
+    const handleChange = (setter: React.Dispatch<React.SetStateAction<string>>, field: keyof FormErrors, value: string) => {
+        setter(value);
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: undefined }));
+        }
+    }
 
     return (
         <>
@@ -435,44 +459,89 @@ const MentalhealthAppointment = () => {
                                 กรอกชื่อผู้รับการปรึกษา
                             </h2>
 
-                            <input
-                                type="text"
-                                value={`${formatThaiDate(selectedDate)} | เวลา : ${selectedTime}`}
-                                readOnly
-                                className="w-full p-3 border font-bold border-gray-200 bg-gray-100 text-gray-600 rounded-md mb-4"
-                            />
+                            <div className="flex flex-col justify-center gap-5">
 
-                            <input
-                                type="text"
-                                placeholder="ชื่อ-นามสกุล"
-                                value={name}
-                                onChange={e => setName(e.target.value)}
-                                className="w-full p-3 border border-gray-300 rounded-md mb-4"
-                            />
+                                {/* วันที่ + เวลา */}
+                                <input
+                                    type="text"
+                                    value={`${formatThaiDate(selectedDate)} | เวลา : ${selectedTime}`}
+                                    readOnly
+                                    className="w-full mb-4 p-3 font-bold border border-gray-200 bg-gray-100 text-gray-600 rounded-md"
+                                />
 
-                            <input
-                                type="number"
-                                placeholder="รหัสประจำตัว"
-                                value={code}
-                                onChange={e => setCode(e.target.value)}
-                                className="w-full p-3 border border-gray-300 rounded-md mb-4"
-                            />
+                                {/* ชื่อ-นามสกุล */}
+                                <div className="flex flex-col gap-1">
+                                    <input
+                                        type="text"
+                                        placeholder="ชื่อ-นามสกุล"
+                                        value={name}
+                                        onChange={(e) =>
+                                            handleChange(setName, "name", e.target.value)
+                                        }
+                                        className={`w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400
+                ${errors.name ? "border-red-500 bg-red-50" : "border-gray-300"}`}
+                                    />
 
-                            <input
-                                type="number"
-                                placeholder="เบอร์โทรศัพท์"
-                                value={phone}
-                                onChange={e => setPhone(e.target.value)}
-                                className="w-full p-3 border border-gray-300 rounded-md mb-4"
-                            />
+                                    <span
+                                        className={`text-sm min-h-[1.25rem] transition-opacity
+                ${errors.name ? "text-red-500 opacity-100" : "opacity-0"}`}
+                                    >
+                                        {errors.name || "placeholder"}
+                                    </span>
+                                </div>
 
-                            <textarea
-                                placeholder="หมายเหตุ (ถ้ามี)"
-                                value={description}
-                                onChange={e => setDescription(e.target.value)}
-                                rows={3}
-                                className="p-3 border border-gray-300 rounded-md w-full mb-4"
-                            />
+                                {/* รหัส */}
+                                <div className="flex flex-col gap-1">
+                                    <input
+                                        type="number"
+                                        placeholder="รหัส"
+                                        value={code}
+                                        onChange={(e) =>
+                                            handleChange(setCode, "code", e.target.value)
+                                        }
+                                        className={`w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400
+                ${errors.code ? "border-red-500 bg-red-50" : "border-gray-300"}`}
+                                    />
+
+                                    <span
+                                        className={`text-sm min-h-[1.25rem] transition-opacity
+                ${errors.code ? "text-red-500 opacity-100" : "opacity-0"}`}
+                                    >
+                                        {errors.code || "placeholder"}
+                                    </span>
+                                </div>
+
+                                {/* เบอร์โทรศัพท์ */}
+                                <div className="flex flex-col gap-1">
+                                    <input
+                                        type="number"
+                                        placeholder="เบอร์โทรศัพท์"
+                                        value={phone}
+                                        onChange={(e) =>
+                                            handleChange(setPhone, "phone", e.target.value)
+                                        }
+                                        className={`w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400
+                ${errors.phone ? "border-red-500 bg-red-50" : "border-gray-300"}`}
+                                    />
+
+                                    <span
+                                        className={`text-sm min-h-[1.25rem] transition-opacity
+                ${errors.phone ? "text-red-500 opacity-100" : "opacity-0"}`}
+                                    >
+                                        {errors.phone || "placeholder"}
+                                    </span>
+                                </div>
+
+                                {/* หมายเหตุ */}
+                                <textarea
+                                    placeholder="หมายเหตุ (ถ้ามี)"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    rows={3}
+                                    className="w-full p-3 border border-gray-300 rounded-md"
+                                />
+
+                            </div>
 
                             {/* ปุ่มกด */}
                             <div className="modal-action flex flex-col md:flex-row justify-end gap-4 w-full">

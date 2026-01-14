@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
+import {toast} from "react-hot-toast";
 
 
 type User = {
@@ -35,6 +36,7 @@ export default function EditProfile() {
             }
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error)
+            toast.error("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้")
         }
     }, [])
 
@@ -51,6 +53,7 @@ export default function EditProfile() {
             setFormdata(result.showuser);
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการโหลดข้อมูล:", error);
+            toast.error("เกิดข้อผิดพลาดในการโหลดข้อมูล")
         } finally {
             setLoading(false);
         }
@@ -88,12 +91,13 @@ export default function EditProfile() {
             })
 
             if (res.ok) {
-                alert('แก้ไขข้อมูลสำเร็จ !!! ')
+                toast.success('แก้ไขข้อมูลสำเร็จ !!!')
                 loadData();
             }
 
         } catch (error) {
             console.log('เกิดข้อผิดพลาดในการแก้ไขข้อมูล : ', error)
+            toast.error('เกิดข้อผิดพลาดในการแก้ไขข้อมูล')
         }
     };
 

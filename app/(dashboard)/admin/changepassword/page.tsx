@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react';
+import {toast} from "react-hot-toast";
 
 type User = {
     id: number;
@@ -32,11 +33,9 @@ const AdminChangePassword = () => {
             if (res.ok) {
                 setData(data.user);
             }
-            // } else {
-            //     console.log("ไม่พบ token หรือ token ไม่ถูกต้อง:", data.message);
-            // }
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
+            toast.error('เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้')
         }
     }
 
@@ -66,13 +65,14 @@ const AdminChangePassword = () => {
             })
 
             if (res.ok) {
-                alert('แก้ไขรหัสผ่านเรียบร้อย!')
+                toast.success('เปลี่ยนรหัสผ่านสำเร็จ')
                 setPassword('')
                 setConfirmPassword('')
             }
 
         } catch (error) {
             console.log('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน :', error)
+            toast.error('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน')
         }
     };
 

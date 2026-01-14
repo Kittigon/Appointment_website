@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import type { users } from '@prisma/client';
 import { Pencil } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 
 
@@ -35,6 +36,7 @@ const AdminManage = () => {
 
         } catch (error) {
             console.log('เกิดข้อผิดพลาดในการโหลดข้อมูล:', error)
+            toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูล')
         }
     }
 
@@ -45,12 +47,12 @@ const AdminManage = () => {
 
         try {
             if (!newpassword || !confirmPassword) {
-                alert("กรุณาป้อนข้อมูลให้ครบถ้วน")
+                toast.error("กรุณากรอกข้อมูลให้ครบถ้วน");
                 return;
             }
 
             if (newpassword != confirmPassword) {
-                alert("รหัสผ่านไม่ตรงกัน")
+                toast.error("รหัสผ่านไม่ตรงกัน กรุณาลองใหม่อีกครั้ง");
                 return;
             }
 
@@ -67,7 +69,7 @@ const AdminManage = () => {
             })
 
             if (res.ok) {
-                alert('เปลี่ยนรหัสผ่านสำเร็จเรียบร้อย')
+                toast.success('เปลี่ยนรหัสผ่านสำเร็จ !')
                 setNewpassword('')
                 setConfirmPassword('')
                 fetchAppointments();
@@ -75,6 +77,7 @@ const AdminManage = () => {
 
         } catch (error) {
             console.log('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน : ', error)
+            toast.error('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน')
         }
     }
 
@@ -87,6 +90,9 @@ const AdminManage = () => {
     };
 
     const handleRemove = async (id: number) => {
+        if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้ที่มี ID: ${id} ?`)) {
+            return;
+        }
         try {
             const res = await fetch(`/api/user/` + id, {
                 method: "DELETE",
@@ -96,11 +102,12 @@ const AdminManage = () => {
             })
 
             if (res.ok) {
-                alert('ลบผู้ใช้งานสำเร็จ !')
+                toast.success('ลบผู้ใช้สำเร็จ !')
                 fetchAppointments();
             }
         } catch (error) {
             console.log('เกิดข้อผิดพลาดในการลบข้อมูล : ', error)
+            toast.error('เกิดข้อผิดพลาดในการลบข้อมูล')
         }
     }
 
@@ -115,12 +122,13 @@ const AdminManage = () => {
             });
 
             if (res.ok) {
-                alert("อัปเดตบทบาทสำเร็จ");
+                toast.success("อัปเดตบทบาทผู้ใช้สำเร็จ!");
                 fetchAppointments();
             }
 
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการอัปเดตบทบาท: ", error);
+            toast.error("เกิดข้อผิดพลาดในการอัปเดตบทบาท");
         }
     };
 
@@ -187,15 +195,26 @@ const AdminManage = () => {
                     </table>
                 </div>
                 {/* MODAL */}
-                <dialog id="change_password_modal" className="modal">
+                <dialog
+                    id="change_password_modal"
+                    className="modal [&::backdrop]:bg-transparent"
+                >
                     <div className="modal-box max-w-md">
                         <form method="dialog">
-                            <button className="btn btn-sm btn-circle btn-ghost absolute right-3 top-3">✕</button>
+                            <button className="btn btn-sm btn-circle btn-ghost absolute right-3 top-3">
+                                ✕
+                            </button>
                         </form>
-                        <h3 className="font-bold text-lg text-purple-700 mb-4">เปลี่ยนรหัสผ่านผู้ใช้งาน</h3>
+
+                        <h3 className="font-bold text-lg text-purple-700 mb-4">
+                            เปลี่ยนรหัสผ่านผู้ใช้งาน
+                        </h3>
+
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">รหัสผ่านใหม่</label>
+                                <label className="block text-sm font-medium mb-1">
+                                    รหัสผ่านใหม่
+                                </label>
                                 <input
                                     type="password"
                                     className="w-full border rounded-md px-3 py-2 outline-purple-500"
@@ -203,8 +222,11 @@ const AdminManage = () => {
                                     onChange={(e) => setNewpassword(e.target.value)}
                                 />
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium mb-1">ยืนยันรหัสผ่าน</label>
+                                <label className="block text-sm font-medium mb-1">
+                                    ยืนยันรหัสผ่าน
+                                </label>
                                 <input
                                     type="password"
                                     className="w-full border rounded-md px-3 py-2 outline-purple-500"
@@ -212,6 +234,7 @@ const AdminManage = () => {
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                 />
                             </div>
+
                             <button
                                 onClick={handleEdit}
                                 type="button"

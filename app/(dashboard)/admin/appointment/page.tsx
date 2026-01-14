@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import type { appointments } from "@prisma/client"
 import { Calendar, Clock, User, Phone } from "lucide-react"
+import {toast} from "react-hot-toast"
 
 const AdminAppointment = () => {
     const [appointments, setAppointments] = useState<appointments[]>([])
@@ -22,6 +23,7 @@ const AdminAppointment = () => {
             }
         } catch (error) {
             console.error('Error fetching appointments:', error)
+            toast.error('เกิดข้อผิดพลาดในการดึงข้อมูลการนัดหมาย')
         }
     }
 

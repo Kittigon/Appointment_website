@@ -4,6 +4,7 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import { th } from "date-fns/locale/th";
 import "react-datepicker/dist/react-datepicker.css";
 import type { DisabledDate } from "@prisma/client";
+import {toast} from "react-hot-toast"
 
 registerLocale("th", th);
 
@@ -62,10 +63,10 @@ export default function CloseDaysPage() {
     };
 
     const closeSingleDay = async () => {
-        if (!singleDay) return alert("กรุณาเลือกวันที่");
+        if (!singleDay) return toast.error("กรุณาเลือกวันที่");
 
         if (!isFutureDate(singleDay)) {
-            return alert("ไม่สามารถปิดวันนี้หรือวันในอดีตได้");
+            return toast.error("ไม่สามารถปิดวันนี้หรือวันในอดีตได้");
         }
 
         const formatted = toLocalDateString(singleDay);
@@ -77,17 +78,17 @@ export default function CloseDaysPage() {
         });
 
         if (res.ok) {
-            alert("ปิดวันสำเร็จ");
+            toast.success("ปิดวันสำเร็จ");
             fetchDisabledDates();
         }
     };
 
 
     const closeRange = async () => {
-        if (!start || !end) return alert("กรุณาเลือกช่วงวันที่");
+        if (!start || !end) return toast.error("กรุณาเลือกช่วงวันที่");
 
         if (!isFutureDate(start) || !isFutureDate(end)) {
-            return alert("ไม่สามารถปิดวันนี้หรือวันในอดีตได้");
+            return toast.error("ไม่สามารถปิดวันนี้หรือวันในอดีตได้");
         }
 
         const startDate = toLocalDateString(start);
@@ -100,7 +101,7 @@ export default function CloseDaysPage() {
         });
 
         if (res.ok) {
-            alert("ปิดช่วงวันสำเร็จ");
+            toast.success("ปิดช่วงวันสำเร็จ");
             fetchDisabledDates();
         }
     };
@@ -113,7 +114,7 @@ export default function CloseDaysPage() {
         });
 
         if (res.ok) {
-            alert("เปิดวันสำเร็จ");
+            toast.success("เปิดวันสำเร็จ");
             fetchDisabledDates();
         }
     };

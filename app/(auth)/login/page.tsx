@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { UserRound } from 'lucide-react'
 import { loginSchema } from '@/schemas/login'
+import toast from 'react-hot-toast'
 
 type User = {
     id: number;
@@ -15,7 +16,7 @@ const LoginPage = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
-        const messages = [
+    const messages = [
         "วันนี้คุณรู้สึกยังไงบ้าง?",
         "เราพร้อมสนับสนุนคุณเสมอ 💜",
         "ดีใจที่ได้พบคุณอีกครั้ง 😊",
@@ -34,6 +35,12 @@ const LoginPage = () => {
         return () => clearInterval(interval)
     }, [messages.length])
 
+    useEffect(() => {
+        if (error && (email || password)) {
+            setError('')
+        }
+    }, [email, password])
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
@@ -43,7 +50,7 @@ const LoginPage = () => {
             setError(parsed.error.issues[0].message);
             return;
         }
-        
+
         // if (!email || !password) {
         //     setError('กรุณากรอกข้อมูลให้ครบถ้วน');
         //     return;
@@ -62,7 +69,8 @@ const LoginPage = () => {
             const data = await res.json();
 
             if (res.ok) {
-                alert('เข้าสู่ระบบสำเร็จ');
+                // setSuccess(true);
+                toast.success('เข้าสู่ระบบสำเร็จ !');
                 setEmail('');
                 setPassword('');
 

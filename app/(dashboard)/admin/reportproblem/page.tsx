@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { AlertTriangle, User, Calendar } from "lucide-react"
 import type { reportproblems } from "@prisma/client"
+import { toast } from "react-hot-toast"
 
 interface ReportProblemWithUser extends reportproblems {
     id: number;
@@ -53,7 +54,8 @@ const AdminReportProblem = () => {
             }
 
         } catch (error) {
-            console.log("Error fetching report problems:", error)
+            console.log("เกิดข้อผิดพลาดในการดึงข้อมูลรายงานปัญหา:", error)
+            toast.error("เกิดข้อผิดพลาดในการดึงข้อมูลรายงานปัญหา")
         }
     }
 
@@ -72,12 +74,13 @@ const AdminReportProblem = () => {
                         r.id === id ? { ...r, status: newStatus as ReportProblemWithUser["status"] } : r
                     )
                 )
-                alert("อัปเดตสถานะสําเร็จ")
+                toast.success("อัปเดตสถานะเรียบร้อยแล้ว")
             } else {
-                console.log("Failed to update status")
+                console.log("เกิดข้อผิดพลาดในการอัปเดตสถานะ")
             }
         } catch (error) {
-            console.log("Error updating status:", error)
+            console.log("เกิดข้อผิดพลาดในการอัปเดตสถานะ:", error)
+            toast.error("เกิดข้อผิดพลาดในการอัปเดตสถานะ")
         }
     }
 
@@ -118,7 +121,7 @@ const AdminReportProblem = () => {
                             {report.createdAt instanceof Date
                                 ? report.createdAt.toLocaleDateString("th-TH")
                                 : new Date(report.createdAt).toLocaleDateString("th-TH")}
-                        </div>  
+                        </div>
                         <div className="mb-1 text-slate-700 font-medium">{report.type}</div>
                         <div className="mb-2 text-slate-600">{report.description}</div>
                         <span

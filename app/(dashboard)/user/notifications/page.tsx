@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from "react";
 import type { Notifications, users } from "@prisma/client";
+import {toast} from "react-hot-toast";
 
 const ITEMS_PER_PAGE = 3;
 
@@ -32,6 +33,7 @@ export default function NotificationsPage() {
                 if (res.ok) setUser(data.user);
             } catch (err) {
                 console.log("Error loading user:", err);
+                toast.error("เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ใช้");
             }
         };
         loadUser();
@@ -48,7 +50,8 @@ export default function NotificationsPage() {
                 const list = Array.isArray(data) ? data : data?.notifications || [];
                 setNotifications(list);
             } catch (err) {
-                console.log("Error loading notifications:", err);
+                console.log("เกิดข้อผิดพลาดในการโหลดการแจ้งเตือน:", err);
+                toast.error("เกิดข้อผิดพลาดในการโหลดการแจ้งเตือน");
             } finally {
                 setLoading(false);
             }

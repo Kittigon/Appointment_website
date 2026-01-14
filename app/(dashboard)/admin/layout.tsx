@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode } from "react";
+import { Toaster } from 'react-hot-toast'
 
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -151,6 +152,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </button>
 
                 {children}
+                <Toaster position="bottom-right"/>
             </main>
         </div>
     );

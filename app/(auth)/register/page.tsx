@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from "next/link"
 import { UserPlus } from "lucide-react";
 import { registerSchema } from '@/schemas/register';
+import toast from 'react-hot-toast'
 
 const RegisterPage = () => {
     const [name, setName] = useState("")
@@ -32,6 +33,12 @@ const RegisterPage = () => {
         }, 3000)
         return () => clearInterval(interval)
     }, [messages.length])
+
+    useEffect(() => {
+        if (error && (name || email || password || age)) {
+            setError('')
+        }
+    }, [email, password])
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -65,7 +72,8 @@ const RegisterPage = () => {
 
             if (res.ok) {
                 // Registration successful
-                alert("สมัครสมาชิกสำเร็จ")
+                toast.success("สมัครสมาชิกสำเร็จ !")
+                // Clear form
                 setName("")
                 setEmail("")
                 setPassword("")

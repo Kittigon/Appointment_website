@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from "react";
+import {toast} from "react-hot-toast";
 
 interface UserConsent {
     name?: string;
@@ -50,6 +51,8 @@ const MentalhealthEvaluations = () => {
             setData(data.dass21List);
         } catch (error) {
             console.log("โหลดข้อมูลล้มเหลว:", error);
+            toast.error('โหลดข้อมูลล้มเหลว');
+
         } finally {
             setLoading(false);
         }
@@ -66,15 +69,15 @@ const MentalhealthEvaluations = () => {
             });
 
             if (res.ok) {
-                alert('ลบข้อมูลสำเร็จ');
+                toast.success('ลบข้อมูลสำเร็จ');
                 loadData();
             } else {
-                alert('ลบข้อมูลล้มเหลว');
+                toast.error('เกิดข้อผิดพลาดในการลบข้อมูล');
             }
 
         } catch (error) {
             console.log("ลบข้อมูลล้มเหลว:", error);
-            alert('เกิดข้อผิดพลาดในการลบข้อมูล');
+            toast.error('ลบข้อมูลล้มเหลว');
         }
     }
 

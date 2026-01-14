@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Notifications, users, appointments } from "@prisma/client";
+import { toast } from "react-hot-toast";
 
 /* ================= Utils ================= */
 
@@ -45,6 +46,7 @@ export default function NotificationsPage() {
                 if (res.ok) setUser(data.user);
             } catch {
                 console.log("Load user error");
+                toast.error("เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ใช้");
             }
         };
         loadUser();
@@ -71,6 +73,7 @@ export default function NotificationsPage() {
                 setDass21(dassData.DASS21noti || []);
             } catch {
                 console.log("Load data error");
+                toast.error("เกิดข้อผิดพลาดในการโหลดข้อมูล");
             } finally {
                 setLoading(false);
             }

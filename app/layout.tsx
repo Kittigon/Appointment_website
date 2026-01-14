@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import './globals.css';
+import { Toaster } from 'react-hot-toast'
 
 
 export default function RootLayout({
@@ -15,6 +16,7 @@ export default function RootLayout({
         </header>
         <Navbar />
         {children}
+        <Toaster position="bottom-right"/>
       </body>
     </html>
   );

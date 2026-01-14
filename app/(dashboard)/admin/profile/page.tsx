@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useState, useEffect } from 'react';
+import {toast} from "react-hot-toast";
 
 
 type User = {
@@ -34,6 +35,7 @@ const AdminProfile = () => {
             setFormdata(data.showuser)
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการโหลดข้อมูล : ", error)
+            toast.error("เกิดข้อผิดพลาดในการโหลดข้อมูล")
         }
     }, [data?.id])
 
@@ -62,6 +64,7 @@ const AdminProfile = () => {
             }
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
+            toast.error("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้");
         }
     }
 
@@ -89,12 +92,13 @@ const AdminProfile = () => {
             })
 
             if (res.ok) {
-                alert('แก้ไขข้อมูลสำเร็จ !!! ')
+                toast.success("แก้ไขข้อมูลสำเร็จ")
                 loadData();
             }
 
         } catch (error) {
             console.log('เกิดข้อผิดพลาดในการแก้ไขข้อมูล : ', error)
+            toast.error("เกิดข้อผิดพลาดในการแก้ไขข้อมูล")
         }
     };
 
