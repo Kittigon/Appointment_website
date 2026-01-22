@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect} from 'react'
 import Link from 'next/link'
 import { UserRound } from 'lucide-react'
 import { loginSchema } from '@/schemas/login'
@@ -15,7 +15,6 @@ type User = {
 const LoginPage = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [error, setError] = useState('')
     const messages = [
         "วันนี้คุณรู้สึกยังไงบ้าง?",
         "เราพร้อมสนับสนุนคุณเสมอ 💜",
@@ -35,27 +34,15 @@ const LoginPage = () => {
         return () => clearInterval(interval)
     }, [messages.length])
 
-    useEffect(() => {
-        if (error && (email || password)) {
-            setError('')
-        }
-    }, [email, password])
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         const parsed = loginSchema.safeParse({ email, password });
 
         if (!parsed.success) {
-            setError(parsed.error.issues[0].message);
+            toast.error(parsed.error.issues[0].message);
             return;
         }
-
-        // if (!email || !password) {
-        //     setError('กรุณากรอกข้อมูลให้ครบถ้วน');
-        //     return;
-        // }
-        setError('');
 
         try {
             const res = await fetch('/api/auth/login', {
@@ -92,19 +79,19 @@ const LoginPage = () => {
                         window.location.href = "/admin/dashboard";
                     }
                 } else {
-                    setError("เข้าสู่ระบบสำเร็จ แต่ไม่สามารถดึงข้อมูลผู้ใช้ได้");
+                    toast.error("เข้าสู่ระบบสำเร็จ แต่ไม่สามารถดึงข้อมูลผู้ใช้ได้");
                 }
 
             } else {
                 if (data.message === 'Invalid email or password') {
-                    setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+                    toast.error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
                 } else {
-                    setError(data.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+                    toast.error(data.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
                 }
             }
         } catch (error) {
             console.error('Login error:', error);
-            setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+            toast.error('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
         }
     };
 
@@ -152,8 +139,6 @@ const LoginPage = () => {
                                     className="w-full mt-1 px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400"
                                 />
                             </div>
-
-                            {error && <div className="text-red-500 text-sm">{error}</div>}
 
                             {/* ปุ่มมีไอคอน 👤 */}
                             <button

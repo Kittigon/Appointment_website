@@ -74,7 +74,7 @@ const UserHistory = () => {
                 const dataList = Array.isArray(json) ? json : (json.showAppoinment || []);
                 
                 const filteredData = dataList.filter((item: appointments) => 
-                    item.status === 'CONFIRMED' || item.status === 'CANCELLED'
+                    item.status === 'COMPLETED'|| item.status === 'CANCELLED'
                 );
                 
                 filteredData.sort((a: appointments, b: appointments) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -155,7 +155,7 @@ const UserHistory = () => {
                                                 {/* สถานะ */}
                                                 <div className="flex items-center gap-2 md:justify-end">
                                                     <span className="font-semibold text-gray-600">สถานะ:</span>
-                                                    {item.status === 'CONFIRMED' ? (
+                                                    {item.status === 'COMPLETED' ? (
                                                         <span className="flex items-center gap-1 text-green-600 bg-green-50 px-3 py-1 rounded-full font-bold text-sm border border-green-200">
                                                             <CheckCircle2 size={16} />
                                                             สำเร็จ

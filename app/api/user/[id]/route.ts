@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/utils/db";
 import bcrypt from 'bcrypt'
+import { changePasswordSchema } from '@/schemas/changePassword';
 
-// =========================
-// GET - ดึงข้อมูลผู้ใช้ตาม id
-// =========================
+
+// ดึงข้อมูลผู้ใช้ตาม ID
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
         const id = await context.params;
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
         const showuser = await prisma.users.findUnique({
             where: { id: idNum },
-            select: { email: true, name: true, gender: true, age: true }
+            select: { id : true ,email: true, name: true, gender: true, age: true , phone: true, code: true }
         })
 
         return NextResponse.json({ showuser }, { status: 200 })
@@ -25,16 +25,17 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     }
 }
 
-// =========================
-// PUT - แก้ไขข้อมูลผู้ใช้
-// =========================
+
 interface EditUser {
     email: string;
     name: string;
     gender: string;
     age: number;
+    phone ?: string;
+    code ?: string;
 }
 
+// แก้ไขข้อมูลผู้ใช้
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
         const id = await context.params;
@@ -44,11 +45,11 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         }
 
         const body = await req.json() as EditUser
-        const { email, name, gender, age } = body
+        const { email, name, gender, age ,phone , code  } = body
 
         await prisma.users.update({
             where: { id: idNum },
-            data: { email, name, gender, age }
+            data: { email, name, gender, age , phone, code }
         })
 
         return NextResponse.json({ message: "Update User Success!" }, { status: 200 })
@@ -58,39 +59,80 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     }
 }
 
-// =========================
-// PATCH - เปลี่ยนรหัสผ่านผู้ใช้
-// =========================
-interface ChangePassword {
-    password: string;
-}
+// เปลี่ยนรหัสผ่านผู้ใช้
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        const id = await context.params;
-        const idNum = Number(id.id)
-        if (isNaN(idNum)) {
-            return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
+        const { id } = await context.params;
+        const userId = Number(id);
+
+        if (isNaN(userId)) {
+            return NextResponse.json(
+                { message: "Invalid user ID" },
+                { status: 400 }
+            );
         }
 
-        const { password } = await req.json() as ChangePassword
-        const hashPassword = await bcrypt.hash(password, 10)
+        // 1️ รับ body
+        const body = await req.json();
 
+        // 2️ validate ด้วย Zod (สำคัญ!)
+        const parsed = changePasswordSchema.safeParse(body);
+        if (!parsed.success) {
+            return NextResponse.json(
+                { message: "ข้อมูลไม่ถูกต้อง" },
+                { status: 400 }
+            );
+        }
+
+        const { currentPassword, newPassword } = parsed.data;
+
+        // 3️ ดึง user จาก DB
+        const user = await prisma.users.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            return NextResponse.json(
+                { message: "ไม่พบผู้ใช้" },
+                { status: 404 }
+            );
+        }
+
+        // 4️ ตรวจรหัสผ่านเดิม
+        const isMatch = await bcrypt.compare(
+            currentPassword,
+            user.password
+        );
+
+        if (!isMatch) {
+            return NextResponse.json(
+                { message: "รหัสผ่านเดิมไม่ถูกต้อง" },
+                { status: 401 }
+            );
+        }
+
+        // 5️ hash รหัสใหม่
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // 6️ update
         await prisma.users.update({
-            where: { id: idNum },
-            data: { password: hashPassword }
-        })
+            where: { id: userId },
+            data: { password: hashedPassword },
+        });
 
-        return NextResponse.json({ message: "Update Password Success!" }, { status: 200 })
+        return NextResponse.json(
+            { message: "เปลี่ยนรหัสผ่านสำเร็จ" },
+            { status: 200 }
+        );
     } catch (error: unknown) {
         console.error("PATCH ID User Error:", error)
         return NextResponse.json({ message: "Server PATCH ID User Error!" }, { status: 500 })
     }
 }
 
-// =========================
+
 // DELETE - ลบผู้ใช้
-// =========================
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
         const id = await context.params;

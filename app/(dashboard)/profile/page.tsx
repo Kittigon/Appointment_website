@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
-import {toast} from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 
 type User = {
@@ -19,6 +19,8 @@ export default function EditProfile() {
         email: '',
         gender: '',
         age: 0,
+        phone: '',
+        code: ''
     });
     const [data, setData] = useState<User | null>(null)
     const [loading, setLoading] = useState(true);
@@ -85,7 +87,7 @@ export default function EditProfile() {
             const res = await fetch('/api/user/' + id, {
                 method: "PUT",
                 headers: {
-                    'Content-Type': 'applications/json'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formdata)
             })
@@ -117,6 +119,8 @@ export default function EditProfile() {
             </>
         );
     }
+
+    console.log('formdata:', formdata);
 
     return (
         <>
@@ -153,6 +157,30 @@ export default function EditProfile() {
                                     name="email"
                                     value={formdata.email}
                                     onChange={handleChange}
+                                    className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    รหัสนักศึกษา / บุคลากร
+                                </label>
+                                <input
+                                    type="text"
+                                    name="code"
+                                    value={formdata.code ?? ''}
+                                    onChange={handleChange}
+                                    placeholder="เช่น 65123456"
+                                    className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">เบอร์โทรศัพท์</label>
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    value={formdata.phone ?? ''}
+                                    onChange={handleChange}
+                                    placeholder="เช่น 0812345678"
                                     className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500"
                                 />
                             </div>

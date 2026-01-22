@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from "next/link"
 import Image from "next/image"
 import { LockKeyholeOpen, Menu, Bell } from 'lucide-react'
@@ -12,17 +12,13 @@ type User = {
 }
 
 const Navbar = () => {
-    // const role: string = "user" // This should be dynamically set based on user role
     const [menuOpen, setMenuOpen] = useState(false)
     const [dropdownOpen, setDropdownOpen] = useState(false)
     const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false)
     const [data, setData] = useState<User | null>(null)
+    const [unreadCount, setUnreadCount] = useState(0);
 
-    useEffect(() => {
-        FecthUser();
-    }, [])
-
-    const FecthUser = async () => {
+    const FecthUser = useCallback(async () => {
         try {
             const res = await fetch('/api/auth/token', {
                 method: 'GET',
@@ -41,7 +37,51 @@ const Navbar = () => {
         } catch (error) {
             console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
         }
-    }
+    }, [])
+
+    // Fetch unread notifications count
+    const fetchUnreadNotifications = useCallback(async () => {
+        if (!data?.id) return;
+        const userId = data?.id;
+
+        try {
+            const res = await fetch('/api/system/notifications/unread-count/' + userId, {
+                method: 'GET',
+                credentials: "include",
+                cache: "no-store"
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setUnreadCount(data.unreadCount);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }, [data?.id]);
+
+    useEffect(() => {
+        FecthUser();
+    }, [FecthUser]);
+
+    useEffect(() => {
+        if (data?.id) {
+            fetchUnreadNotifications();
+        }
+    }, [data?.id, fetchUnreadNotifications]);
+
+    useEffect(() => {
+        const handler = () => {
+            fetchUnreadNotifications();
+        };
+
+        window.addEventListener("notifications-read", handler);
+
+        return () => {
+            window.removeEventListener("notifications-read", handler);
+        };
+    }, [fetchUnreadNotifications]);
+
 
     const handleLogout = async () => {
         try {
@@ -101,7 +141,21 @@ const Navbar = () => {
                                 <li><Link href="/user/appointment" className="hover:underline">ตารางนัดหมาย</Link></li>
                                 <li><Link href="/user/infocheck" className="hover:underline">ตรวจสอบการนัดหมาย</Link></li>
                                 <li><Link href="/user/history" className="hover:underline">ประวัติการนัดหมาย</Link></li>
-                                <li><Link href="/user/notifications" className="hover:underline"><Bell /></Link></li>
+                                <li className="relative">
+                                    <Link href="/user/notifications">
+                                        <Bell />
+                                        {unreadCount > 0 && (
+                                            <span className="
+                absolute -top-1 -right-1
+                bg-red-500 text-white text-xs
+                rounded-full w-5 h-5
+                flex items-center justify-center
+            ">
+                                                {unreadCount}
+                                            </span>
+                                        )}
+                                    </Link>
+                                </li>
                             </>
                         )}
                         {data?.role === "MENTALHEALTH" && (
@@ -111,7 +165,21 @@ const Navbar = () => {
                                 <li><Link href="/mentalhealth/evaluations" className="hover:underline">ตรวจสอบแบบประเมิน</Link></li>
                                 <li><Link href="/mentalhealth/close-day" className="hover:underline">ตั้งค่าวันปิดให้บริการ</Link></li>
                                 <li><Link href="/mentalhealth/history" className="hover:underline">ประวัติผู้ใช้บริการ</Link></li>
-                                <li><Link href="/mentalhealth/notifications" className="hover:underline"><Bell /></Link></li>
+                                <li className="relative">
+                                    <Link href="/mentalhealth/notifications">
+                                        <Bell />
+                                        {unreadCount > 0 && (
+                                            <span className="
+                absolute -top-1 -right-1
+                bg-red-500 text-white text-xs
+                rounded-full w-5 h-5
+                flex items-center justify-center
+            ">
+                                                {unreadCount}
+                                            </span>
+                                        )}
+                                    </Link>
+                                </li>
                             </>
                         )}
                         {/* {data?.role === "ADMIN" && (

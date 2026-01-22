@@ -1,22 +1,27 @@
-import {  NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/utils/db";
 import { Status } from "@prisma/client";
 
 export async function GET() {
     try {
-        const showAppoinment = await prisma.appointments.findMany({
+        const appointments = await prisma.appointments.findMany({
             where: {
-                status: Status.CONFIRMED,
-            }
-        })
+                status: {
+                    in: [Status.COMPLETED, Status.CANCELLED],
+                },
+            },
+            orderBy: [
+                { date: "desc" },
+                { time: "desc" },
+            ],
+        });
 
-        return NextResponse.json(showAppoinment)
-    } catch (error: unknown) {
-        if (error instanceof Error) {
-            console.error("GET AppointmentHistory Error:", error.message)
-        } else {
-            console.error("Unknown error in GET AppointmentHistory:", error)
-        }
-        return NextResponse.json({ message: "Server Error" }, { status: 500 })
+        return NextResponse.json(appointments);
+    } catch (error) {
+        console.error("GET AppointmentHistory Error:", error);
+        return NextResponse.json(
+            { message: "Server Error" },
+            { status: 500 }
+        );
     }
 }

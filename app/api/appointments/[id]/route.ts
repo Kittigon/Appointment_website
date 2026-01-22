@@ -7,7 +7,7 @@ import prisma from "@/utils/db";
 // =========================
 export async function PUT(
     req: NextRequest,
-    context: {params : Promise<{id: string}>}
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
         const id = await context.params;
@@ -107,7 +107,7 @@ export async function PATCH(
 // =========================
 export async function DELETE(
     req: NextRequest,
-    context: {params : Promise<{id: string}>}
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
         const id = await context.params;
@@ -116,8 +116,32 @@ export async function DELETE(
             return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
         }
 
+        const appointment = await prisma.appointments.findUnique({
+            where: { id: idNum },
+        })
+        if (!appointment) {
+            return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+        }
+
+        if (appointment.status === "CONFIRMED") {
+            const appointmentDateTime = new Date(
+                `${appointment.date}T${appointment.time}:00`
+            );
+
+            const now = new Date();
+            const diffHours =
+                (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+            if (diffHours < 24) {
+                return NextResponse.json(
+                    { message: "ไม่สามารถยกเลิกการนัดหมายที่ใกล้ถึงเวลาได้" },
+                    { status: 403 }
+                );
+            }
+        }
+
         await prisma.appointments.delete({
-            where: { id: idNum },   
+            where: { id: idNum },
         })
 
         return NextResponse.json({ message: "DELETE Appointment Success!" }, { status: 200 })

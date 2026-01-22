@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
+import { changePasswordSchema } from '@/schemas/changePassword';
 
 type User = {
     id: number;
@@ -11,11 +12,15 @@ type User = {
 };
 
 export default function ChangePasswordPage() {
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [error, setError] = useState('');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
+
+    // ===== Loading State =====
+    const [loading, setLoading] = useState(true);       // โหลดข้อมูลผู้ใช้
+    const [submitting, setSubmitting] = useState(false); // ตอนกด submit
 
     const fetchUser = useCallback(async () => {
         try {
@@ -44,13 +49,22 @@ export default function ChangePasswordPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!password || !confirmPassword) {
-            setError('กรุณาป้อนข้อมูลให้ครบถ้วน');
-            return;
-        }
+        if (submitting) return;
 
-        if (password !== confirmPassword) {
-            setError('รหัสผ่านไม่ตรงกัน');
+        const parsed = changePasswordSchema.safeParse({
+            currentPassword,
+            newPassword,
+            confirmNewPassword,
+        });
+
+        if (!parsed.success) {
+            const errors = parsed.error.flatten().fieldErrors;
+            setError(
+                errors.currentPassword?.[0] ||
+                errors.newPassword?.[0] ||
+                errors.confirmNewPassword?.[0] ||
+                'ข้อมูลไม่ถูกต้อง'
+            );
             return;
         }
 
@@ -59,25 +73,32 @@ export default function ChangePasswordPage() {
             return;
         }
 
-        setError('');
+        setError(null);
+        setSubmitting(true);
 
         try {
-            const res = await fetch('/api/user/' + data.id, {
+            const res = await fetch(`/api/user/${data.id}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json', // ❗ แก้ typo
-                },
-                body: JSON.stringify({ password }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(parsed.data),
             });
 
-            if (res.ok) {
-                toast.success('เปลี่ยนรหัสผ่านสำเร็จ');
-                setPassword('');
-                setConfirmPassword('');
+            const result = await res.json();
+
+            if (!res.ok) {
+                toast.error(result.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
+                return;
             }
+
+            toast.success('เปลี่ยนรหัสผ่านสำเร็จ');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
         } catch (error) {
-            console.error('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน:', error);
-            toast.error('ไม่สามารถเปลี่ยนรหัสผ่านได้');
+            console.error(error);
+            toast.error('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -88,9 +109,11 @@ export default function ChangePasswordPage() {
                     <h1 className="text-xl font-bold">เปลี่ยนรหัสผ่าน</h1>
                 </div>
 
-                <div className="flex items-center justify-center py-10 text-gray-400">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500 mb-3"></div>
-                    <p>กำลังโหลดข้อมูล...</p>
+                <div className="flex items-center justify-center py-20">
+                    <div className="flex flex-col items-center text-gray-400">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500 mb-3"></div>
+                        <p>กำลังโหลดข้อมูล...</p>
+                    </div>
                 </div>
             </>
         );
@@ -117,35 +140,59 @@ export default function ChangePasswordPage() {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">
-                                    รหัสผ่านใหม่
+                                    รหัสผ่านเดิม
                                 </label>
                                 <input
                                     type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    value={currentPassword}
+                                    onChange={(e) => setCurrentPassword(e.target.value)}
                                     className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm"
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">
-                                    ยืนยันรหัสผ่าน
+                                    รหัสผ่านใหม่
                                 </label>
                                 <input
                                     type="password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
                                     className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm"
                                 />
                             </div>
 
-                            {error && <div className="text-red-500 text-sm">{error}</div>}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    ยืนยันรหัสผ่านใหม่
+                                </label>
+                                <input
+                                    type="password"
+                                    value={confirmNewPassword}
+                                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                    className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm"
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="text-red-500 text-sm">
+                                    {error}
+                                </div>
+                            )}
 
                             <button
                                 type="submit"
-                                className="w-full bg-purple-500 text-white py-2 rounded-xl hover:bg-purple-600 transition"
+                                disabled={submitting}
+                                className={`w-full py-2 rounded-xl text-white transition flex items-center justify-center gap-2
+                                    ${submitting
+                                        ? 'bg-purple-400 cursor-not-allowed'
+                                        : 'bg-purple-500 hover:bg-purple-600'
+                                    }`}
                             >
-                                บันทึกรหัสผ่าน
+                                {submitting && (
+                                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                )}
+                                {submitting ? 'กำลังบันทึก...' : 'บันทึกรหัสผ่าน'}
                             </button>
                         </form>
                     </div>

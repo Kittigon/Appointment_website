@@ -69,6 +69,55 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "มีการจองในวันและเวลาดังกล่าวแล้ว " }, { status: 409 })
         }
 
+        const activeAppointment = await prisma.appointments.findFirst({
+            where: {
+                userId,
+                status: {
+                    in: ["PENDING", "CONFIRMED"],
+                },
+            },
+            orderBy: {
+                date: "desc", // เอานัดล่าสุด
+            },
+        });
+
+        if (activeAppointment) {
+            // ถ้า PENDING → ห้ามจอง
+            if (activeAppointment?.status === "PENDING") {
+                const pendingDateTime = new Date(
+                    `${activeAppointment.date}T${activeAppointment.time}:00`
+                );
+
+                if (new Date() < pendingDateTime) {
+                    return NextResponse.json(
+                        { message: "คุณมีนัดที่ยังไม่ได้ยืนยัน" },
+                        { status: 409 }
+                    );
+                }
+            }
+
+            // ถ้า CONFIRMED → เช็กเวลา
+            if (activeAppointment.status === "CONFIRMED") {
+
+                const appointmentDateTime = new Date(
+                    `${activeAppointment.date}T${activeAppointment.time}:00`
+                );
+
+                const now = new Date();
+
+                // ถ้ายังไม่ถึงเวลานัด → ห้ามจอง
+                if (now < appointmentDateTime) {
+                    return NextResponse.json(
+                        {
+                            message: "คุณมีนัดที่ได้รับการยืนยันแล้ว กรุณารอถึงวันนัดหมายก่อนจองใหม่",
+                        },
+                        { status: 409 }
+                    );
+                }
+
+            }
+        }
+
         const appointment = await prisma.appointments.create({
             data: {
                 userId,

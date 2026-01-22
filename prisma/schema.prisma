@@ -15,6 +15,8 @@ model users {
   name          String
   age           Int?
   gender        String?
+  phone         String?          
+  code          String?          
   role          Role             @default(USER)
   createdAt     DateTime         @default(now())
   updateAt      DateTime         @default(now())
@@ -24,34 +26,34 @@ model users {
 }
 
 model appointments {
-  id           Int      @id @default(autoincrement())
-  userId       Int
-  date         String
-  time         String
-  description  String?
-  status       Status   @default(PENDING)
-  cancelReason String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
-  code         String
-  phone        String
-  name         String
-  user         users    @relation(fields: [userId], references: [id])
+  id            Int             @id @default(autoincrement())
+  userId        Int
+  date          String
+  time          String
+  description   String?
+  status        Status          @default(PENDING)
+  cancelReason  String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @default(now())
+  code          String
+  phone         String
+  name          String
+  user          users           @relation(fields: [userId], references: [id])
   notifications Notifications[]
 }
 
 model dass_21_result {
-  id               Int           @id @default(autoincrement())
-  user_id          String?       @db.VarChar(100)
+  id               Int             @id @default(autoincrement())
+  user_id          String?         @db.VarChar(100)
   depression_score Int?
   anxiety_score    Int?
   stress_score     Int?
   depression_level String?
   anxiety_level    String?
   stress_level     String?
-  created_at       DateTime?     @default(now()) @db.Timestamp(6)
-  user_consent     user_consent? @relation(fields: [user_id], references: [line_user_id], onDelete: Cascade, onUpdate: NoAction)
-  notifications Notifications[]
+  created_at       DateTime?       @default(now()) @db.Timestamp(6)
+  user_consent     user_consent?   @relation(fields: [user_id], references: [line_user_id], onDelete: Cascade, onUpdate: NoAction)
+  notifications    Notifications[]
 }
 
 model documents {
@@ -61,14 +63,14 @@ model documents {
 }
 
 model reportproblems {
-  id          Int          @id @default(autoincrement())
-  userId      Int
-  type        String
-  description String?
-  status      Reportstatus @default(NEW)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @default(now())
-  user        users        @relation(fields: [userId], references: [id])
+  id            Int             @id @default(autoincrement())
+  userId        Int
+  type          String
+  description   String?
+  status        Reportstatus    @default(NEW)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @default(now())
+  user          users           @relation(fields: [userId], references: [id])
   notifications Notifications[]
 }
 
@@ -93,7 +95,7 @@ model user_consent {
   tone_style     String?          @default("friendly") @db.VarChar(20)
   chat_history   chat_history[]
   dass_21_result dass_21_result[]
-  notifications Notifications[]
+  notifications  Notifications[]
 }
 
 model DisabledDate {
@@ -105,11 +107,11 @@ model DisabledDate {
 model Notifications {
   id Int @id @default(autoincrement())
 
-  userId    Int?
-  user      users?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int?
+  user   users? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   line_user_id String?
-  lineUser user_consent? @relation(fields: [line_user_id] , references: [line_user_id], onDelete: Cascade)
+  lineUser     user_consent? @relation(fields: [line_user_id], references: [line_user_id], onDelete: Cascade)
 
   type      String
   title     String
@@ -146,5 +148,6 @@ enum Role {
 enum Status {
   PENDING
   CONFIRMED
+  COMPLETED
   CANCELLED
 }

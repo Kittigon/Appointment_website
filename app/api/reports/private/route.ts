@@ -3,29 +3,37 @@ import prisma from "@/utils/db";
 
 export async function GET(req: NextRequest) {
     try {
-        const userId = Number(req.nextUrl.searchParams.get("userId"))
-        // console.log(userId)
+        const userId = Number(req.nextUrl.searchParams.get("userId"));
 
         if (isNaN(userId)) {
-            return NextResponse.json({ message: "Missing or invalid userId" }, { status: 400 });
+            return NextResponse.json(
+                { message: "Missing or invalid userId" },
+                { status: 400 }
+            );
         }
 
-        const reportproblem = await prisma.reportproblems.findFirst({
+        const reportproblems = await prisma.reportproblems.findMany({
             where: {
-                userId: userId
+                userId: userId,
             },
             orderBy: {
-                createdAt: 'desc'
-            }
-        })
+                createdAt: "desc", 
+            },
+        });
 
-        return NextResponse.json(reportproblem, { status: 200 })
+        // ส่ง array กลับเสมอ
+        return NextResponse.json(reportproblems, { status: 200 });
+
     } catch (error: unknown) {
         if (error instanceof Error) {
-            console.error("Get Report a Problem Error : ", error.message)
+            console.error("Get Report Problem Error:", error.message);
         } else {
-            console.error("Unknown error in Get Report a Problem : ", error)
+            console.error("Unknown error:", error);
         }
-        return NextResponse.json({ message: "Sever Get Report a Problem Error !" }, { status: 400 })
+
+        return NextResponse.json(
+            { message: "Server Get Report Problem Error!" },
+            { status: 500 }
+        );
     }
 }

@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
 import Link from 'next/link';
-import { useCallback, useState, useEffect } from 'react';
-import {toast} from "react-hot-toast";
+import { useState, useEffect, useCallback } from 'react';
+import { toast } from "react-hot-toast";
 
 
 type User = {
@@ -12,63 +12,64 @@ type User = {
     role: "USER" | "MENTALHEALTH" | "ADMIN";
 }
 
-const AdminProfile = () => {
+
+export default function EditProfile() {
     const [formdata, setFormdata] = useState({
         name: '',
         email: '',
         gender: '',
         age: 0,
+        phone: '',
+        code: ''
     });
     const [data, setData] = useState<User | null>(null)
+    const [loading, setLoading] = useState(true);
 
-    const loadData = useCallback(async () => {
-        const id = data?.id
-        if (!id) return
-
+    // ฟังก์ชันดึง user token
+    const FecthUser = useCallback(async () => {
         try {
-            const res = await fetch(`/api/user/${id}`,
-                {
-                    method: "GET", headers:
-                        { "Content-type": "application/json" }
-                })
-            const data = await res.json()
-            setFormdata(data.showuser)
-        } catch (error) {
-            console.log("เกิดข้อผิดพลาดในการโหลดข้อมูล : ", error)
-            toast.error("เกิดข้อผิดพลาดในการโหลดข้อมูล")
-        }
-    }, [data?.id])
-
-    useEffect(() => {
-        FecthUser();
-    }, [])
-
-    useEffect(() => {
-        if (data?.id) {
-            loadData();
-        }
-    }, [data, loadData])
-
-    const FecthUser = async () => {
-        try {
-            const res = await fetch('/api/auth/token', {
-                method: 'GET',
+            const res = await fetch("/api/auth/token", {
+                method: "GET",
                 credentials: "include",
-            });
-
-            const data = await res.json();
-            // console.log("Data:", data);
-
+            })
+            const result = await res.json()
             if (res.ok) {
-                setData(data.user);
+                setData(result.user)
             }
         } catch (error) {
-            console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
-            toast.error("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้");
+            console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error)
+            toast.error("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้")
         }
-    }
+    }, [])
 
+    // ฟังก์ชันโหลดข้อมูล user
+    const loadData = useCallback(async () => {
+        if (!data?.id) return;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/user/${data.id}`, {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+            });
+            const result = await res.json();
+            setFormdata(result.showuser);
+        } catch (error) {
+            console.log("เกิดข้อผิดพลาดในการโหลดข้อมูล:", error);
+            toast.error("เกิดข้อผิดพลาดในการโหลดข้อมูล")
+        } finally {
+            setLoading(false);
+        }
+    }, [data?.id]);
 
+    // useEffect เรียก FecthUser
+    useEffect(() => {
+        FecthUser()
+    }, [FecthUser])
+
+    // useEffect เรียก loadData เมื่อ data เปลี่ยน
+    useEffect(() => {
+        loadData()
+    }, [loadData])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -86,25 +87,43 @@ const AdminProfile = () => {
             const res = await fetch('/api/user/' + id, {
                 method: "PUT",
                 headers: {
-                    'Content-Type': 'applications/json'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formdata)
             })
 
             if (res.ok) {
-                toast.success("แก้ไขข้อมูลสำเร็จ")
+                toast.success('แก้ไขข้อมูลสำเร็จ !!!')
                 loadData();
             }
 
         } catch (error) {
             console.log('เกิดข้อผิดพลาดในการแก้ไขข้อมูล : ', error)
-            toast.error("เกิดข้อผิดพลาดในการแก้ไขข้อมูล")
+            toast.error('เกิดข้อผิดพลาดในการแก้ไขข้อมูล')
         }
     };
 
+    if (loading) {
+        return (
+            <>
+                <div className="
+            bg-[#B67CDE] w-[250px] h-10 text-white p-10 mt-7 flex items-center justify-center rounded-tr-sm rounded-br-sm">
+                    <h1 className="text-xl font-bold  ">โปรไฟล์</h1>
+                </div>
+                <div className=" flex items-center justify-center">
+                    <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500 mb-3"></div>
+                        <p>กำลังโหลดข้อมูล...</p>
+                    </div>
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
-            <h2 className="text-3xl font-bold text-slate-800 pt-6 pl-6 mt-3 ml-2">โปรไฟล์</h2>
+            <h2 className="text-3xl font-bold text-slate-800 pt-6 pl-6 mt-3 ml-2">แก้ไขข้อมูลส่วนตัว</h2>
+
             <div className=" flex items-center justify-center px-4 py-10">
                 <div className="bg-white shadow-2xl rounded-3xl overflow-hidden w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2">
                     {/* ซ้าย: welcome */}
@@ -134,6 +153,30 @@ const AdminProfile = () => {
                                     name="email"
                                     value={formdata.email}
                                     onChange={handleChange}
+                                    className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    รหัสนักศึกษา / บุคลากร
+                                </label>
+                                <input
+                                    type="text"
+                                    name="code"
+                                    value={formdata.code ?? ''}
+                                    onChange={handleChange}
+                                    placeholder="เช่น 65123456"
+                                    className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">เบอร์โทรศัพท์</label>
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    value={formdata.phone ?? ''}
+                                    onChange={handleChange}
+                                    placeholder="เช่น 0812345678"
                                     className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500"
                                 />
                             </div>
@@ -180,6 +223,5 @@ const AdminProfile = () => {
                 </div>
             </div>
         </>
-    )
+    );
 }
-export default AdminProfile

@@ -4,6 +4,7 @@ import type { users } from '@prisma/client';
 import { Pencil } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { adminResetPasswordSchema } from '@/schemas/adminResetPassword';
 
 
 
@@ -20,9 +21,10 @@ const formatThaiDate = (dateStr: string): string => {
 
 const AdminManage = () => {
     const [data, setData] = useState<users[]>([]);
-    const [newpassword, setNewpassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchAppointments()
@@ -42,51 +44,75 @@ const AdminManage = () => {
 
 
     const handleEdit = async () => {
-        // console.log(id)
-        const id = selectedUserId;
+        if (!selectedUserId) {
+            toast.error('ไม่พบผู้ใช้ที่เลือก');
+            return;
+        }
+
+        const parsed = adminResetPasswordSchema.safeParse({
+            newPassword,
+            confirmNewPassword,
+        });
+
+        if (!parsed.success) {
+            const errors = parsed.error.flatten().fieldErrors;
+            setError(
+                errors.newPassword?.[0] ||
+                errors.confirmNewPassword?.[0] ||
+                'ข้อมูลไม่ถูกต้อง'
+            );
+            return;
+        }
+
+        setError(null);
 
         try {
-            if (!newpassword || !confirmPassword) {
-                toast.error("กรุณากรอกข้อมูลให้ครบถ้วน");
+            const res = await fetch(
+                `/api/admin/reset-passwordUser/${selectedUserId}`,
+                {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newPassword }),
+                }
+            );
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                toast.error(result.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
                 return;
             }
 
-            if (newpassword != confirmPassword) {
-                toast.error("รหัสผ่านไม่ตรงกัน กรุณาลองใหม่อีกครั้ง");
-                return;
-            }
+            toast.success('รีเซ็ตรหัสผ่านสำเร็จ');
 
-            const password = newpassword;
+            setNewPassword('');
+            setConfirmNewPassword('');
+            setSelectedUserId(null);
 
-            const res = await fetch(`/api/user/` + id, {
-                method: "PATCH",
-                headers: {
-                    'Content-type': "application/json"
-                },
-                body: JSON.stringify({
-                    password
-                })
-            })
-
-            if (res.ok) {
-                toast.success('เปลี่ยนรหัสผ่านสำเร็จ !')
-                setNewpassword('')
-                setConfirmPassword('')
-                fetchAppointments();
-            }
-
+            // ปิด modal
+            (
+                document.getElementById(
+                    'change_password_modal'
+                ) as HTMLDialogElement
+            )?.close();
+            
         } catch (error) {
-            console.log('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน : ', error)
-            toast.error('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน')
+            console.error(error);
+            toast.error('เกิดข้อผิดพลาด');
         }
-    }
+    };
 
     const openModal = (userId: number) => {
         setSelectedUserId(userId);
-        const modal = document.getElementById('change_password_modal') as HTMLDialogElement | null;
-        if (modal) {
-            modal.showModal();
-        }
+        setNewPassword('');
+        setConfirmNewPassword('');
+        setError(null);
+
+        const modal = document.getElementById(
+            'change_password_modal'
+        ) as HTMLDialogElement | null;
+
+        modal?.showModal();
     };
 
     const handleRemove = async (id: number) => {
@@ -218,8 +244,8 @@ const AdminManage = () => {
                                 <input
                                     type="password"
                                     className="w-full border rounded-md px-3 py-2 outline-purple-500"
-                                    value={newpassword}
-                                    onChange={(e) => setNewpassword(e.target.value)}
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
                                 />
                             </div>
 
@@ -230,11 +256,15 @@ const AdminManage = () => {
                                 <input
                                     type="password"
                                     className="w-full border rounded-md px-3 py-2 outline-purple-500"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    value={confirmNewPassword}
+                                    onChange={(e) => setConfirmNewPassword(e.target.value)}
                                 />
                             </div>
-
+                            {error && (
+                                <div className="text-red-500 text-sm font-medium">
+                                    {error}
+                                </div>
+                            )}
                             <button
                                 onClick={handleEdit}
                                 type="button"

@@ -11,8 +11,6 @@ const RegisterPage = () => {
     const [password, setPassword] = useState("")
     const [gender, setGender] = useState("")
     const [age, setAge] = useState("")
-    const [error, setError] = useState("")
-    const [emailunique, setEmailUnique] = useState("")
 
     const messages = [
         "ยินดีต้อนรับสู่พื้นที่ปลอดภัย 💜",
@@ -34,30 +32,17 @@ const RegisterPage = () => {
         return () => clearInterval(interval)
     }, [messages.length])
 
-    useEffect(() => {
-        if (error && (name || email || password || age)) {
-            setError('')
-        }
-    }, [email, password])
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
 
         // console.log({ name, email, password , gender, age})
-        setError("")
-        setEmailUnique("")
 
         const parsed = registerSchema.safeParse({ name, email, password, gender, age });
 
         if (!parsed.success) {
-            setError(parsed.error.issues[0].message);
+            toast.error(parsed.error.issues[0].message);
             return;
         }
-
-        // if (!name || !email || !password || !gender || !age) {
-        //     setError("กรุณากรอกข้อมูลให้ครบถ้วน")
-        //     return
-        // }
 
         try {
             const res = await fetch("/api/auth/register", {
@@ -83,14 +68,14 @@ const RegisterPage = () => {
             } else {
                 // Handle errors
                 if (data.message === "Email already exists") {
-                    setEmailUnique("อีเมลนี้ถูกใช้ไปแล้ว")
+                    toast.error("อีเมลนี้ถูกใช้ไปแล้ว")
                 } else {
-                    setError(data.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก")
+                    toast.error(data.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก")
                 }
             }
         } catch (error) {
             console.error("Registration error:", error)
-            setError("เกิดข้อผิดพลาดในการสมัครสมาชิก")
+            toast.error("เกิดข้อผิดพลาดในการสมัครสมาชิก")
         }
     }
 
@@ -178,8 +163,6 @@ const RegisterPage = () => {
                             </div>
 
                             {/* Error Messages */}
-                            {error && <div className="text-red-500 text-sm">{error}</div>}
-                            {emailunique && <div className="text-red-500 text-sm">{emailunique}</div>}
 
                             <button
                                 type="submit"

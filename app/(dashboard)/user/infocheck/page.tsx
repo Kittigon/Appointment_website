@@ -32,6 +32,21 @@ const formatThaiDate = (dateStr: string): string => {
     });
 };
 
+// เช็คว่ายกเลิกได้ไหม (>= 24 ชม.)
+const canUserCancel = (appointment: appointments) => {
+    if (appointment.status === "CANCELLED") return false;
+
+    const appointmentDateTime = new Date(
+        `${appointment.date}T${appointment.time}:00`
+    );
+
+    const now = new Date();
+    const diffHours =
+        (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    return diffHours >= 24;
+};
+
 const UserInfocheck = () => {
     const [appointment, setAppointment] = useState<appointments[]>([]);
     const [loading, setLoading] = useState(true);
@@ -86,36 +101,30 @@ const UserInfocheck = () => {
     }, [data?.id]);
 
     const handleCancel = async (id: number) => {
-        // 1. Native Confirm ยังใช้ได้ (หรือจะทำ Custom Modal ทีหลังก็ได้)
         if (!confirm("คุณต้องการยกเลิกการนัดหมายนี้ใช่หรือไม่?")) return;
 
-        // 2. เริ่มต้น Toast Loading
-        const toastId = toast.loading('กำลังดำเนินการยกเลิก...');
+        const toastId = toast.loading("กำลังยกเลิกการนัดหมาย...");
 
         try {
             const res = await fetch(`/api/appointments/${id}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' }
+                method: "DELETE",
             });
 
-            if (res.ok) {
-                // 3. แจ้ง Success (อัปเดต toastId เดิม)
-                toast.success('ยกเลิกการนัดหมายสำเร็จ !!!', { id: toastId });
-
-                // โหลดข้อมูลใหม่
-                if (data?.id) {
-                    const resReload = await fetch(`/api/appointments/check?userId=${data.id}`);
-                    const resultReload = await resReload.json();
-                    setAppointment(resultReload.showAppoinment || []);
-                }
-            } else {
-                // กรณี Server ตอบกลับมาว่าไม่สำเร็จ (เช่น 400, 500)
-                throw new Error('Failed to delete');
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || "ไม่สามารถยกเลิกได้");
             }
-        } catch (error) {
-            console.log("Error canceling:", error);
-            // 4. แจ้ง Error
-            toast.error('เกิดข้อผิดพลาดในการยกเลิก', { id: toastId });
+
+            toast.success("ยกเลิกการนัดหมายสำเร็จ", { id: toastId });
+
+            // Reload
+            if (data?.id) {
+                const reload = await fetch(`/api/appointments/check?userId=${data.id}`);
+                const json = await reload.json();
+                setAppointment(json.showAppoinment || []);
+            }
+        } catch{
+            toast.error("เกิดข้อผิดพลาด", { id: toastId });
         }
     };
 
@@ -255,19 +264,31 @@ const UserInfocheck = () => {
                                     </div>
                                 </div>
 
-                                {/* ปุ่มยกเลิก (ทำให้ใหญ่ขึ้นและดูเด่นน้อยลงกว่าเนื้อหาหลัก) */}
-                                {appointment[0].status !== "CONFIRMED" &&
-                                    appointment[0].status !== "CANCELLED" && (
-                                        <div className="flex justify-center md:justify-end mt-8">
-                                            <button
-                                                onClick={() => handleCancel(appointment[0].id)}
-                                                className="group flex items-center gap-2 px-6 py-3 bg-white border border-red-200 text-red-500 rounded-full hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all shadow-sm font-medium"
-                                            >
-                                                <XCircle size={20} className="group-hover:scale-110 transition-transform" />
-                                                ยกเลิกการนัดหมาย
-                                            </button>
+                                
+                                {appointment[0].status === "CONFIRMED" &&
+                                    !canUserCancel(appointment[0]) && (
+                                        <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-700 flex items-start gap-2">
+                                            <AlertCircle size={18} className="mt-0.5" />
+                                            <span>
+                                                ไม่สามารถยกเลิกการนัดหมายที่ใกล้ถึงเวลาได้
+                                                (ต้องยกเลิกล่วงหน้าอย่างน้อย 24 ชั่วโมง)
+                                            </span>
                                         </div>
                                     )}
+
+
+                                {/* ปุ่มยกเลิก (ทำให้ใหญ่ขึ้นและดูเด่นน้อยลงกว่าเนื้อหาหลัก) */}
+                                {canUserCancel(appointment[0]) && (
+                                    <div className="flex justify-center md:justify-end mt-8">
+                                        <button
+                                            onClick={() => handleCancel(appointment[0].id)}
+                                            className="group flex items-center gap-2 px-6 py-3 bg-white border border-red-200 text-red-500 rounded-full hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all shadow-sm font-medium"
+                                        >
+                                            <XCircle size={20} className="group-hover:scale-110 transition-transform" />
+                                            ยกเลิกการนัดหมาย
+                                        </button>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>

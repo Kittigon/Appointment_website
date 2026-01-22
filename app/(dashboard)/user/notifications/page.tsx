@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from "react";
 import type { Notifications, users } from "@prisma/client";
-import {toast} from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 const ITEMS_PER_PAGE = 3;
 
@@ -59,6 +59,27 @@ export default function NotificationsPage() {
         loadNotifications();
     }, [user]);
 
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const markAsRead = async () => {
+            const id = user.id;
+            try {
+                await fetch("/api/system/notifications/mark-read/" + id, {
+                    method: "POST",
+                    credentials: "include",
+                });
+
+                window.dispatchEvent(new Event("notifications-read"));
+
+            } catch (err) {
+                console.error("mark as read error:", err);
+            }
+        };
+
+        markAsRead();
+    }, [user]);
+
     // ===== Pagination logic =====
     const totalPages = Math.ceil(notifications.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -85,7 +106,12 @@ export default function NotificationsPage() {
                                 {currentItems.map((item) => (
                                     <div
                                         key={item.id}
-                                        className="w-full rounded-2xl border bg-white shadow p-5 max-w-xl"
+                                        className={`
+                                        w-full rounded-2xl border shadow p-5 max-w-xl
+                                            ${item.isRead
+                                                ? "bg-gray-50 text-gray-500"
+                                                : "bg-white border-purple-400"}
+                                        `}
                                     >
                                         <h2 className="font-semibold text-lg">
                                             {item.title}

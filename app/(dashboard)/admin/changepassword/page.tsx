@@ -1,131 +1,203 @@
-'use client'
-import { useState, useEffect } from 'react';
-import {toast} from "react-hot-toast";
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-hot-toast';
+import { changePasswordSchema } from '@/schemas/changePassword';
 
 type User = {
     id: number;
     email: string;
-    name: string
+    name: string;
     role: "USER" | "MENTALHEALTH" | "ADMIN";
-}
+};
 
-const AdminChangePassword = () => {
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [error, setError] = useState('');
+export default function ChangePasswordPage() {
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [data, setData] = useState<User | null>(null);
 
-    const [data, setData] = useState<User | null>(null)
+    // ===== Loading State =====
+    const [loading, setLoading] = useState(true);       // โหลดข้อมูลผู้ใช้
+    const [submitting, setSubmitting] = useState(false); // ตอนกด submit
 
-    useEffect(() => {
-        FecthUser();
-    }, [])
-
-    const FecthUser = async () => {
+    const fetchUser = useCallback(async () => {
         try {
             const res = await fetch('/api/auth/token', {
                 method: 'GET',
-                credentials: "include",
+                credentials: 'include',
             });
 
-            const data = await res.json();
-            // console.log("Data:", data);
+            const result = await res.json();
 
-            if (res.ok) {
-                setData(data.user);
+            if (res.ok && result.user) {
+                setData(result.user);
             }
         } catch (error) {
-            console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
-            toast.error('เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้')
+            console.error('เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:', error);
+            toast.error('ไม่สามารถดึงข้อมูลผู้ใช้ได้');
+        } finally {
+            setLoading(false);
         }
-    }
+    }, []);
+
+    useEffect(() => {
+        fetchUser();
+    }, [fetchUser]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const id = data?.id;
 
-        if (!password || !confirmPassword) {
-            setError('กรุณาป้อนข้อมูลให้ครบถ้วน')
+        if (submitting) return;
+
+        const parsed = changePasswordSchema.safeParse({
+            currentPassword,
+            newPassword,
+            confirmNewPassword,
+        });
+
+        if (!parsed.success) {
+            const errors = parsed.error.flatten().fieldErrors;
+            setError(
+                errors.currentPassword?.[0] ||
+                errors.newPassword?.[0] ||
+                errors.confirmNewPassword?.[0] ||
+                'ข้อมูลไม่ถูกต้อง'
+            );
             return;
         }
 
-        if (password !== confirmPassword) {
-            setError('รหัสผ่านไม่ตรงกัน');
+        if (!data?.id) {
+            setError('ไม่พบข้อมูลผู้ใช้');
             return;
         }
-        setError('');
-        // console.log('New Password:', password);
+
+        setError(null);
+        setSubmitting(true);
 
         try {
-            const res = await fetch('/api/user/' + id, {
-                method: "PATCH",
-                headers: {
-                    'Content-Type': 'applications/json'
-                },
-                body: JSON.stringify({ password })
-            })
+            const res = await fetch(`/api/user/${data.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(parsed.data),
+            });
 
-            if (res.ok) {
-                toast.success('เปลี่ยนรหัสผ่านสำเร็จ')
-                setPassword('')
-                setConfirmPassword('')
+            const result = await res.json();
+
+            if (!res.ok) {
+                toast.error(result.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
+                return;
             }
 
+            toast.success('เปลี่ยนรหัสผ่านสำเร็จ');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
         } catch (error) {
-            console.log('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน :', error)
-            toast.error('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน')
+            console.error(error);
+            toast.error('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน');
+        } finally {
+            setSubmitting(false);
         }
     };
 
+    if (loading) {
+        return (
+            <>
+                <div className="bg-[#B67CDE] w-[250px] h-10 text-white p-10 mt-7 flex items-center justify-center rounded-tr-sm rounded-br-sm">
+                    <h1 className="text-xl font-bold">เปลี่ยนรหัสผ่าน</h1>
+                </div>
+
+                <div className="flex items-center justify-center py-20">
+                    <div className="flex flex-col items-center text-gray-400">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500 mb-3"></div>
+                        <p>กำลังโหลดข้อมูล...</p>
+                    </div>
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
-            <h2 className="text-3xl font-bold text-slate-800 pt-6 pl-6 mt-3 ml-2">เปลี่ยนรหัสผ่าน</h2>
+            <div className="bg-[#B67CDE] w-[250px] h-10 text-white p-10 mt-7 flex items-center justify-center rounded-tr-sm rounded-br-sm">
+                <h1 className="text-xl font-bold">เปลี่ยนรหัสผ่าน</h1>
+            </div>
+
             <main className="flex items-center justify-center px-4 py-10">
                 <div className="bg-white shadow-2xl rounded-3xl overflow-hidden w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2">
-                    {/* ซ้าย: welcome */}
                     <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 text-purple-500 p-10">
                         <h1 className="text-4xl font-bold mb-4">Welcome!</h1>
-                        <p className="text-lg">ตั้งรหัสผ่านใหม่เพื่อความปลอดภัยของคุณ 💜</p>
+                        <p className="text-lg">ตั้งรหัสผ่านใหม่เพื่อความปลอดภัยของคุณ</p>
                     </div>
 
-                    {/* ขวา: ฟอร์มเปลี่ยนรหัส */}
                     <div className="p-8">
-                        <h2 className="text-2xl font-semibold text-center text-purple-600 mb-6">เปลี่ยนรหัสผ่าน</h2>
+                        <h2 className="text-2xl font-semibold text-center text-purple-600 mb-6">
+                            เปลี่ยนรหัสผ่าน
+                        </h2>
+
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">รหัสผ่านใหม่</label>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    รหัสผ่านเดิม
+                                </label>
                                 <input
                                     type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                                    value={currentPassword}
+                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                    className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm"
                                 />
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">ยืนยันรหัสผ่าน</label>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    รหัสผ่านใหม่
+                                </label>
                                 <input
                                     type="password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    ยืนยันรหัสผ่านใหม่
+                                </label>
+                                <input
+                                    type="password"
+                                    value={confirmNewPassword}
+                                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                    className="mt-1 p-2 block w-full rounded-xl border-gray-300 shadow-sm"
                                 />
                             </div>
 
                             {error && (
-                                <div className="text-red-500 text-sm">{error}</div>
+                                <div className="text-red-500 text-sm">
+                                    {error}
+                                </div>
                             )}
 
                             <button
                                 type="submit"
-                                className="w-full bg-purple-500 text-white py-2 rounded-xl hover:bg-purple-600 transition duration-200"
+                                disabled={submitting}
+                                className={`w-full py-2 rounded-xl text-white transition flex items-center justify-center gap-2
+                                    ${submitting
+                                        ? 'bg-purple-400 cursor-not-allowed'
+                                        : 'bg-purple-500 hover:bg-purple-600'
+                                    }`}
                             >
-                                บันทึกรหัสผ่าน
+                                {submitting && (
+                                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                )}
+                                {submitting ? 'กำลังบันทึก...' : 'บันทึกรหัสผ่าน'}
                             </button>
                         </form>
                     </div>
                 </div>
             </main>
         </>
-    )
+    );
 }
-export default AdminChangePassword

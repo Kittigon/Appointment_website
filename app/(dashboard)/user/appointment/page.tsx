@@ -69,6 +69,8 @@ type User = {
     id: number;
     email: string;
     name: string
+    code: string;
+    phone: string;
     role: "USER" | "MENTALHEALTH" | "ADMIN";
 }
 
@@ -102,23 +104,18 @@ const UserAppointment = () => {
 
     const [errors, setErrors] = useState<FormErrors>({});
 
-    // const initStatus: Record<string, Record<string, boolean>> = {}
-    // dateList.forEach(date => {
-    //     initStatus[date] = {}
-    //     time.forEach(t => {
-    //         initStatus[date][t] = true
-    //     })
-    // })
+    const fetchUser = useCallback(async () => {
+        const res = await fetch("/api/auth/token", { credentials: "include" });
+        if (!res.ok) return;
 
-    const FecthUser = useCallback(async () => {
-        try {
-            const res = await fetch("/api/auth/token", { method: "GET", credentials: "include" });
-            const data = await res.json();
-            if (res.ok) setData(data.user);
-        } catch (error) {
-            console.log("เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้:", error);
-        }
+        const token = await res.json();
+        const userRes = await fetch(`/api/user/${token.user.id}`);
+        const userData = await userRes.json();
+
+        setData(userData.showuser);
+        console.log("Fetched User Data: ", userData.showuser)
     }, []);
+
 
     const FetchAppointment = useCallback(async (dates: string[]) => {
         const newStatus: Record<string, Record<string, boolean>> = {};
@@ -153,23 +150,42 @@ const UserAppointment = () => {
 
     // โหลดชื่อผู้ใช้
     useEffect(() => {
-        if (data?.name) {
-            setName(data.name)
-            setErrors(prev => ({ ...prev, name: undefined }))
+        if (!data) return;
+
+        if (data.name) {
+            setName(data.name);
+            setErrors(prev => ({ ...prev, name: undefined }));
         }
-    }, [data])
+
+        if (data.phone) {
+            setPhone(data.phone);
+            setErrors(prev => ({ ...prev, phone: undefined }));
+        }
+
+        if (data.code) {
+            setCode(data.code);
+            setErrors(prev => ({ ...prev, code: undefined }));
+        }
+    }, [data]);
+
+    useEffect(() => {
+        fetchUser();
+    }, [fetchUser]);
 
     //โหลดข้อมูลการนัดหมาย
     useEffect(() => {
         const newDates = getNextWeekdays(offset)
         setDateList(newDates)
         FetchAppointment(newDates)
-        FecthUser()
-    }, [offset, FetchAppointment, FecthUser])
+    }, [offset, FetchAppointment]);
 
     useEffect(() => {
         fetchDisabledDates();
     }, []);
+
+    // useEffect(() => {
+    //     fetchFullUser();
+    // }, [fetchFullUser]);
 
     // ฟังก์ชันสำหรับจัดการการเลือกวันและเวลา
     // ถ้าวันและเวลาเลือกได้ (ว่าง) จะอัปเดตสถาน 
@@ -246,7 +262,7 @@ const UserAppointment = () => {
                 date: selectedDate,
                 time: selectedTime
             }
-
+            
             const res = await fetch('/api/appointments', {
                 method: "POST",
                 headers: {
@@ -256,15 +272,20 @@ const UserAppointment = () => {
             })
 
             // ปรับสถานะเป็นไม่ว่าง
-            if (res.ok) {
-                setStatus(prev => ({
-                    ...prev,
-                    [selectedDate]: {
-                        ...prev[selectedDate],
-                        [selectedTime]: false
-                    }
-                }));
+            if (!res.ok) {
+                const errData = await res.json();
+                toast.error(errData.message);
+                return;
             }
+
+            // สำเร็จจริงเท่านั้น ถึงจะเข้าตรงนี้
+            setStatus(prev => ({
+                ...prev,
+                [selectedDate]: {
+                    ...prev[selectedDate],
+                    [selectedTime]: false
+                }
+            }));
 
             toast.success(`จองสำเร็จ: ${selectedDate} เวลา ${selectedTime}`);
 
@@ -295,13 +316,13 @@ const UserAppointment = () => {
             setErrors(prev => ({ ...prev, [field]: undefined }));
         }
     }
-    
+
     const resetForm = () => {
         setSelectedDate("");
         setSelectedTime("");
         setName(data?.name ?? "");
-        setCode("");
-        setPhone("");
+        setCode(data?.code ?? "");
+        setPhone(data?.phone ?? "");
         setdescription("");
         setErrors({});
     };
@@ -439,7 +460,7 @@ const UserAppointment = () => {
                             {/* Input: รหัส */}
                             <div className="flex flex-col">
                                 <input
-                                    type="number" // หรือ text ถ้าต้องการรับตัวอักษร
+                                    type="" // หรือ text ถ้าต้องการรับตัวอักษร
                                     placeholder="รหัส"
                                     value={code}
                                     onChange={e => handleChange(setCode, 'code', e.target.value)}
